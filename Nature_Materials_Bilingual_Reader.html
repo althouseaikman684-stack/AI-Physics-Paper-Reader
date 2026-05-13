@@ -1,0 +1,365 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Nature Materials 超级文献精读器 - 2.5 Flash 终极版</title>
+  
+  <script>
+    window.onerror = function(msg, url, lineNo, columnNo, error) {
+      document.body.innerHTML = '<div style="padding:40px; color:#b91c1c; background:#fef2f2; height:100vh;">' +
+        '<h2>页面加载错误 🔧</h2><p>' + msg + '</p></div>';
+      return false;
+    };
+  </script>
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.6/babel.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
+  
+  <script>
+    // 禁用 Worker 避免本地安全拦截
+    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
+  </script>
+
+  <style>
+    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8fafc; }
+    .markdown-body p { margin-bottom: 0.75em; line-height: 1.6; }
+    .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.75em; }
+    .markdown-body strong { color: #0f172a; }
+    canvas { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); border-radius: 4px; }
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+  </style>
+</head>
+<body class="text-slate-800">
+  <div id="root"></div>
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+    const Icons = {
+      FileText: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
+      Upload: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
+      ChevronLeft: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
+      ChevronRight: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
+      Settings: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
+      Loader: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>,
+      Language: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>,
+      Sparkles: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/></svg>,
+      Brain: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.38A4 4 0 0 0 4 9c0 2.21 1.79 4 4 4h4"/><path d="M17 13a4.5 4.5 0 0 0-3-4"/><path d="M12 10h4a4 4 0 0 0 4-4c0-2.21-1.79-4-4-4a3 3 0 1 0-5.997.125"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>,
+      GradCap: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
+      ChevronDown: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
+      ChevronUp: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
+      X: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
+      AlertCircle: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+    };
+
+    // === 回退到最开始跑通的 2.5 Flash 引擎 ===
+    const callGeminiAPI = async (prompt, userApiKey) => {
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
+      
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
+      });
+      
+      if (!response.ok) {
+        if (response.status === 429) {
+          throw new Error("429_TOO_MANY_REQUESTS");
+        }
+        let errorDetails = "未知网络错误";
+        try {
+          const errorJson = await response.json();
+          errorDetails = errorJson.error?.message || response.status;
+        } catch(e) {}
+        throw new Error(`API_ERROR: ${errorDetails}`);
+      }
+      
+      const data = await response.json();
+      return data.candidates?.[0]?.content?.parts?.[0]?.text || "抱歉，未能生成回复。";
+    };
+
+    const renderMarkdown = (text) => {
+      if (!text) return { __html: "" };
+      let html = text
+        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+        .replace(/\*(.*?)\*/g, '<em>$1</em>')
+        .replace(/\n\n/g, '</p><p>')
+        .replace(/\n/g, '<br/>')
+        .replace(/- (.*?)<br\/>/g, '<ul><li>$1</li></ul>')
+        .replace(/<\/ul><ul>/g, ''); 
+      html = html.replace(/\$(.*?)\$/g, '<span class="font-serif italic text-indigo-700">$1</span>');
+      return { __html: `<p>${html}</p>` };
+    };
+
+    const ACTION_META = {
+      translate: { icon: Icons.Language, title: "本页翻译", color: "blue" },
+      explain: { icon: Icons.Sparkles, title: "大白话讲解", color: "indigo" },
+      highlight: { icon: Icons.Brain, title: "提炼考点", color: "emerald" },
+      question: { icon: Icons.GradCap, title: "套磁提问思路", color: "rose" }
+    };
+
+    function App() {
+      const [apiKey, setApiKey] = useState(localStorage.getItem('gemini_api_key') || '');
+      const [showSettings, setShowSettings] = useState(false);
+      const [tempKey, setTempKey] = useState(apiKey);
+
+      const handleSaveKey = () => {
+        setApiKey(tempKey);
+        localStorage.setItem('gemini_api_key', tempKey);
+        setShowSettings(false);
+      };
+
+      const [pdfDoc, setPdfDoc] = useState(null);
+      const [pageNum, setPageNum] = useState(1);
+      const [numPages, setNumPages] = useState(0);
+      const [isRendering, setIsRendering] = useState(false);
+      const [pageText, setPageText] = useState(""); 
+      const canvasRef = useRef(null);
+
+      const [pageAiData, setPageAiData] = useState({});
+
+      const handleFileUpload = async (event) => {
+        const file = event.target.files[0];
+        if (!file || file.type !== "application/pdf") return alert("请上传 PDF！");
+
+        try {
+          setIsRendering(true);
+          setPageAiData({}); 
+          const arrayBuffer = await file.arrayBuffer();
+          const loadedPdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
+          setPdfDoc(loadedPdf);
+          setNumPages(loadedPdf.numPages);
+          setPageNum(1); 
+        } catch (error) {
+          alert("PDF 读取失败。");
+          setIsRendering(false);
+        }
+      };
+
+      useEffect(() => {
+        let renderTask = null;
+        const renderPage = async () => {
+          if (!pdfDoc || !canvasRef.current) return;
+          setIsRendering(true);
+          try {
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 1.5 });
+            const canvas = canvasRef.current;
+            const context = canvas.getContext('2d');
+            canvas.height = viewport.height;
+            canvas.width = viewport.width;
+
+            renderTask = page.render({ canvasContext: context, viewport: viewport });
+            await renderTask.promise;
+
+            const textContent = await page.getTextContent();
+            setPageText(textContent.items.map(item => item.str).join(" ").replace(/\s+/g, " "));
+          } catch (e) { } finally { setIsRendering(false); }
+        };
+        renderPage();
+        return () => { if (renderTask) renderTask.cancel(); };
+      }, [pdfDoc, pageNum]);
+
+      const goPrev = () => { if (pageNum > 1) setPageNum(pageNum - 1); };
+      const goNext = () => { if (pageNum < numPages) setPageNum(pageNum + 1); };
+
+      const triggerAI = async (actionType) => {
+        if (!apiKey) return setShowSettings(true);
+        if (!pageText) return alert("当前页无文字，可能是纯图片扫描版。");
+
+        const targetPageNum = pageNum; 
+        const currentPageData = pageAiData[targetPageNum] || {};
+        const existingAction = currentPageData[actionType];
+
+        if (existingAction && existingAction.status === 'success') {
+          setPageAiData(prev => ({
+            ...prev,
+            [targetPageNum]: { ...prev[targetPageNum], [actionType]: { ...existingAction, isExpanded: true } }
+          }));
+          return;
+        }
+
+        if (existingAction && existingAction.status === 'loading') return;
+
+        setPageAiData(prev => ({
+          ...prev,
+          [targetPageNum]: { ...prev[targetPageNum], [actionType]: { status: 'loading', data: '', isExpanded: true } }
+        }));
+
+        let prompt = "";
+        if (actionType === 'translate') prompt = `请将以下英文文献段落翻译成流畅的中文学术表达。\n\n文本：\n${pageText}`;
+        else if (actionType === 'explain') prompt = `你是一位物理学教授。请用极其直白、通俗的中文（打比方）给我讲解这一页的核心论点和隐含的物理机制。\n\n文本：\n${pageText}`;
+        else if (actionType === 'highlight') prompt = `请梳理出下面这页文本中 3-5 个核心“物理考点”、“关键物理量”或“重要结论”，用清晰的中文列表呈现。\n\n文本：\n${pageText}`;
+        else if (actionType === 'question') prompt = `我是一名想申请凝聚态物理方向研究生的学生。请根据以下文献，帮我构思 2 个极具深度、能引起导师兴趣的“套磁提问”。要求：给出英文原话，以及为什么问这个问题的中文解析。\n\n文本：\n${pageText}`;
+
+        try {
+          const result = await callGeminiAPI(prompt, apiKey);
+          setPageAiData(prev => ({
+            ...prev,
+            [targetPageNum]: { ...prev[targetPageNum], [actionType]: { status: 'success', data: result, isExpanded: true } }
+          }));
+        } catch (error) {
+          let errMsg = "请求失败，出现了未知的网络错误。";
+          
+          if (error.message === "429_TOO_MANY_REQUESTS") {
+             errMsg = "请求太频繁啦！您触碰了 Gemini 的防刷限制 (HTTP 429)。请您放下鼠标休息 1 分钟左右，稍后再点即可恢复。";
+          } else if (error.message.startsWith("API_ERROR:")) {
+             errMsg = `服务器拒绝了请求，具体原因：${error.message.replace("API_ERROR: ", "")}`;
+          }
+
+          setPageAiData(prev => ({
+            ...prev,
+            [targetPageNum]: { ...prev[targetPageNum], [actionType]: { status: 'error', data: errMsg, isExpanded: true } }
+          }));
+        }
+      };
+
+      const toggleExpand = (actionType) => {
+        setPageAiData(prev => ({
+          ...prev,
+          [pageNum]: { ...prev[pageNum], [actionType]: { ...prev[pageNum][actionType], isExpanded: !prev[pageNum][actionType].isExpanded } }
+        }));
+      };
+
+      const deleteAction = (e, actionType) => {
+        e.stopPropagation();
+        setPageAiData(prev => {
+          const newPageData = { ...prev[pageNum] };
+          delete newPageData[actionType];
+          return { ...prev, [pageNum]: newPageData };
+        });
+      };
+
+      const currentCards = Object.entries(pageAiData[pageNum] || {});
+
+      return (
+        <div className="min-h-screen flex flex-col h-screen overflow-hidden">
+          <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
+            <div className="flex items-center space-x-3 text-slate-800">
+              <div className="p-1.5 bg-indigo-100 rounded-lg text-indigo-600"><Icons.FileText className="w-5 h-5" /></div>
+              <div><h1 className="text-lg font-bold leading-tight">文献精读工作台</h1><p className="text-xs text-slate-500 font-medium tracking-wide">Gemini 2.5 Flash 终极版</p></div>
+            </div>
+            <div className="flex items-center space-x-4">
+              <label className="flex items-center text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-sm">
+                <Icons.Upload className="w-4 h-4 mr-2" />上传本地 PDF
+                <input type="file" hidden accept=".pdf" onChange={handleFileUpload} />
+              </label>
+              <button onClick={() => setShowSettings(true)} className="flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 px-2 py-2 transition-colors"><Icons.Settings className="w-5 h-5" /></button>
+            </div>
+          </header>
+
+          {showSettings && (
+            <div className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+              <div className="bg-white rounded-2xl shadow-xl p-6 w-full max-w-sm">
+                <h3 className="text-xl font-bold mb-2">设置 API Key</h3>
+                <input type="password" placeholder="AIzaSy..." className="w-full border border-slate-300 rounded-lg px-3 py-2 mb-4 focus:ring-2 focus:ring-indigo-500 outline-none" value={tempKey} onChange={e => setTempKey(e.target.value)} />
+                <div className="flex justify-end space-x-2">
+                  <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm bg-slate-100 hover:bg-slate-200 rounded-lg">取消</button>
+                  <button onClick={handleSaveKey} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg hover:bg-indigo-700">保存</button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <main className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-200/50">
+            <div className="w-full lg:w-1/2 h-full flex flex-col border-r border-slate-300 bg-slate-100 relative">
+              <div className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-10">
+                <button onClick={goPrev} disabled={pageNum <= 1 || !pdfDoc} className="p-1.5 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-colors"><Icons.ChevronLeft className="w-5 h-5" /></button>
+                <div className="text-sm font-medium text-slate-600 bg-slate-100 px-3 py-1 rounded-full border border-slate-200 shadow-inner">
+                  {pdfDoc ? `第 ${pageNum} 页 / 共 ${numPages} 页` : '尚未上传文献'}
+                </div>
+                <button onClick={goNext} disabled={pageNum >= numPages || !pdfDoc} className="p-1.5 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-colors"><Icons.ChevronRight className="w-5 h-5" /></button>
+              </div>
+
+              <div className="flex-1 overflow-auto flex justify-center p-4 relative">
+                {!pdfDoc ? (
+                  <div className="flex flex-col items-center justify-center text-slate-400 h-full"><Icons.FileText className="w-16 h-16 mb-4 opacity-30" /><p>请点击右上角上传 PDF 文件</p></div>
+                ) : (
+                  <div className="relative inline-block">
+                    {isRendering && <div className="absolute inset-0 bg-white/60 backdrop-blur-[2px] flex items-center justify-center rounded z-10"><Icons.Loader className="w-8 h-8 text-indigo-500 animate-spin" /></div>}
+                    <canvas ref={canvasRef} className="max-w-full h-auto bg-white"></canvas>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div className="w-full lg:w-1/2 h-full flex flex-col bg-white">
+              <div className="p-4 bg-slate-50 border-b border-slate-200 shrink-0">
+                <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center"><Icons.Sparkles className="w-4 h-4 mr-1.5 text-indigo-500" />当前页 (第{pageNum}页) AI 助手</h3>
+                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                  {Object.keys(ACTION_META).map(key => {
+                    const ActionIcon = ACTION_META[key].icon;
+                    const isCached = pageAiData[pageNum] && pageAiData[pageNum][key] && pageAiData[pageNum][key].status === 'success';
+                    return (
+                      <button key={key} onClick={() => triggerAI(key)} disabled={!pdfDoc || isRendering} className={`flex flex-col items-center justify-center p-2 rounded-lg border bg-white transition-all disabled:opacity-50 group relative ${isCached ? 'border-green-300 bg-green-50/30' : 'border-slate-200 hover:border-blue-300 hover:shadow-md'}`}>
+                        {isCached && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-400"></span>}
+                        <ActionIcon className={`w-5 h-5 mb-1 transition-colors ${isCached ? 'text-green-600' : 'text-slate-400 group-hover:text-blue-500'}`} />
+                        <span className={`text-xs font-medium ${isCached ? 'text-green-700' : 'text-slate-600'}`}>{ACTION_META[key].title}</span>
+                      </button>
+                    )
+                  })}
+                </div>
+              </div>
+
+              <div className="flex-1 overflow-auto p-4 bg-slate-100/50 space-y-4">
+                {currentCards.length === 0 ? (
+                  <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm"><p>已回退至稳定的 2.5 Flash 引擎。点击上方按钮开始解析。</p></div>
+                ) : (
+                  currentCards.map(([actionType, cardData]) => {
+                    const meta = ACTION_META[actionType];
+                    const ActionIcon = cardData.status === 'error' ? Icons.AlertCircle : meta.icon;
+                    
+                    const isError = cardData.status === 'error';
+                    const cardTheme = isError ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200';
+                    const headerTheme = isError ? 'bg-red-100/50 text-red-700' : 'bg-slate-50 text-slate-700';
+
+                    return (
+                      <div key={actionType} className={`rounded-xl shadow-sm border overflow-hidden ${cardTheme}`}>
+                        <div className={`flex items-center justify-between px-4 py-3 cursor-pointer select-none ${headerTheme}`} onClick={() => toggleExpand(actionType)}>
+                          <div className="flex items-center font-bold text-sm">
+                            {cardData.status === 'loading' ? <Icons.Loader className="w-4 h-4 mr-2 animate-spin text-indigo-500" /> : <ActionIcon className={`w-4 h-4 mr-2 ${isError ? 'text-red-600' : `text-${meta.color}-500`}`} />}
+                            {cardData.status === 'loading' ? '正在思考生成中...' : isError ? `${meta.title} (出错了)` : meta.title}
+                          </div>
+                          <div className="flex items-center space-x-2 text-slate-400">
+                            {cardData.isExpanded ? <Icons.ChevronUp className="w-4 h-4"/> : <Icons.ChevronDown className="w-4 h-4"/>}
+                            <div className="h-4 w-px bg-slate-300 mx-1"></div>
+                            <button onClick={(e) => deleteAction(e, actionType)} className="hover:text-red-500 p-1 transition-colors"><Icons.X className="w-4 h-4"/></button>
+                          </div>
+                        </div>
+                        
+                        {cardData.isExpanded && (
+                          <div className="p-4 border-t border-slate-100/50">
+                            {cardData.status === 'loading' ? (
+                              <div className="space-y-3">
+                                <div className="h-4 bg-slate-200 rounded w-3/4 animate-pulse"></div>
+                                <div className="h-4 bg-slate-200 rounded w-full animate-pulse"></div>
+                                <div className="h-4 bg-slate-200 rounded w-5/6 animate-pulse"></div>
+                              </div>
+                            ) : (
+                              <div className={`markdown-body text-sm ${isError ? 'text-red-600 font-medium' : 'text-slate-700'}`} dangerouslySetInnerHTML={renderMarkdown(cardData.data)} />
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    )
+                  })
+                )}
+              </div>
+            </div>
+          </main>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
