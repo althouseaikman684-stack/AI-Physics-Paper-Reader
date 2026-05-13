@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Nature Materials 超级文献精读器 - 2.5 Flash 终极版</title>
+  <title>Nature Materials 超级文献精读器 - 自由对话版</title>
   
   <script>
     window.onerror = function(msg, url, lineNo, columnNo, error) {
@@ -56,10 +56,13 @@
       ChevronDown: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
       ChevronUp: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
       X: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-      AlertCircle: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
+      MessageCircle: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
+      Send: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
+      User: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
+      Bot: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>
     };
 
-    // === 回退到最开始跑通的 2.5 Flash 引擎 ===
+    // === Gemini API 调用 (使用 gemini-2.5-flash) ===
     const callGeminiAPI = async (prompt, userApiKey) => {
       const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${userApiKey}`;
       
@@ -123,7 +126,17 @@
       const [pageText, setPageText] = useState(""); 
       const canvasRef = useRef(null);
 
+      // UI 模式：'cards' (快捷卡片) | 'chat' (自由对话)
+      const [aiMode, setAiMode] = useState('cards');
+
+      // 卡片数据缓存
       const [pageAiData, setPageAiData] = useState({});
+
+      // 对话记录状态
+      const [chatHistory, setChatHistory] = useState([]);
+      const [chatInput, setChatInput] = useState("");
+      const [isChatting, setIsChatting] = useState(false);
+      const chatScrollRef = useRef(null);
 
       const handleFileUpload = async (event) => {
         const file = event.target.files[0];
@@ -132,6 +145,7 @@
         try {
           setIsRendering(true);
           setPageAiData({}); 
+          setChatHistory([{ role: 'ai', text: `您好！我已经准备好阅读这篇新文献了。您可以随时向我提问关于文献内容的任何问题。` }]);
           const arrayBuffer = await file.arrayBuffer();
           const loadedPdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
           setPdfDoc(loadedPdf);
@@ -167,9 +181,17 @@
         return () => { if (renderTask) renderTask.cancel(); };
       }, [pdfDoc, pageNum]);
 
+      // 聊天框自动滚动到底部
+      useEffect(() => {
+        if (aiMode === 'chat' && chatScrollRef.current) {
+          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
+        }
+      }, [chatHistory, isChatting, aiMode]);
+
       const goPrev = () => { if (pageNum > 1) setPageNum(pageNum - 1); };
       const goNext = () => { if (pageNum < numPages) setPageNum(pageNum + 1); };
 
+      // === 快捷卡片逻辑 ===
       const triggerAI = async (actionType) => {
         if (!apiKey) return setShowSettings(true);
         if (!pageText) return alert("当前页无文字，可能是纯图片扫描版。");
@@ -207,13 +229,11 @@
           }));
         } catch (error) {
           let errMsg = "请求失败，出现了未知的网络错误。";
-          
           if (error.message === "429_TOO_MANY_REQUESTS") {
-             errMsg = "请求太频繁啦！您触碰了 Gemini 的防刷限制 (HTTP 429)。请您放下鼠标休息 1 分钟左右，稍后再点即可恢复。";
+             errMsg = "请求太频繁啦！请您放下鼠标休息 1 分钟左右，稍后再点即可恢复。";
           } else if (error.message.startsWith("API_ERROR:")) {
              errMsg = `服务器拒绝了请求，具体原因：${error.message.replace("API_ERROR: ", "")}`;
           }
-
           setPageAiData(prev => ({
             ...prev,
             [targetPageNum]: { ...prev[targetPageNum], [actionType]: { status: 'error', data: errMsg, isExpanded: true } }
@@ -237,14 +257,48 @@
         });
       };
 
+      // === 自由对话逻辑 ===
+      const handleChatSubmit = async (e) => {
+        e.preventDefault();
+        if (!chatInput.trim()) return;
+        if (!apiKey) return setShowSettings(true);
+
+        const newUserMsg = { role: 'user', text: chatInput };
+        setChatHistory(prev => [...prev, newUserMsg]);
+        setChatInput("");
+        setIsChatting(true);
+
+        // 截取当前页面的文本作为上下文 (防止文本过长撑爆，截取前 2000 字符)
+        const contextText = pageText ? pageText.substring(0, 2000) : "未提取到文献文本";
+        const prompt = `你是一个专业的物理学AI助教。请解答我的提问。
+【背景上下文】：这是我当前正在阅读的物理文献的第 ${pageNum} 页的文本内容：
+---
+${contextText}
+---
+请基于以上文献背景（如果我的问题与文献相关的话），以及你的专业知识，回答我的问题：
+【我的问题】：${newUserMsg.text}`;
+
+        try {
+          const result = await callGeminiAPI(prompt, apiKey);
+          setChatHistory(prev => [...prev, { role: 'ai', text: result }]);
+        } catch (error) {
+          let errMsg = "抱歉，网络似乎出现了点问题。";
+          if (error.message === "429_TOO_MANY_REQUESTS") errMsg = "⚠️ 发言太快啦，触发了 API 限速！请休息一分钟后再试。";
+          setChatHistory(prev => [...prev, { role: 'ai', text: errMsg }]);
+        } finally {
+          setIsChatting(false);
+        }
+      };
+
       const currentCards = Object.entries(pageAiData[pageNum] || {});
 
       return (
         <div className="min-h-screen flex flex-col h-screen overflow-hidden">
+          {/* 头部区域 */}
           <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
             <div className="flex items-center space-x-3 text-slate-800">
               <div className="p-1.5 bg-indigo-100 rounded-lg text-indigo-600"><Icons.FileText className="w-5 h-5" /></div>
-              <div><h1 className="text-lg font-bold leading-tight">文献精读工作台</h1><p className="text-xs text-slate-500 font-medium tracking-wide">Gemini 2.5 Flash 终极版</p></div>
+              <div><h1 className="text-lg font-bold leading-tight">文献精读工作台</h1><p className="text-xs text-slate-500 font-medium tracking-wide">Gemini 2.5 自由对话版</p></div>
             </div>
             <div className="flex items-center space-x-4">
               <label className="flex items-center text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-sm">
@@ -269,6 +323,8 @@
           )}
 
           <main className="flex-1 flex flex-col lg:flex-row overflow-hidden bg-slate-200/50">
+            
+            {/* 左侧：PDF 阅读器 */}
             <div className="w-full lg:w-1/2 h-full flex flex-col border-r border-slate-300 bg-slate-100 relative">
               <div className="h-12 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-10">
                 <button onClick={goPrev} disabled={pageNum <= 1 || !pdfDoc} className="p-1.5 rounded text-slate-600 hover:bg-slate-100 disabled:opacity-30 transition-colors"><Icons.ChevronLeft className="w-5 h-5" /></button>
@@ -290,68 +346,163 @@
               </div>
             </div>
 
+            {/* 右侧：AI 智能面板 */}
             <div className="w-full lg:w-1/2 h-full flex flex-col bg-white">
-              <div className="p-4 bg-slate-50 border-b border-slate-200 shrink-0">
-                <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center"><Icons.Sparkles className="w-4 h-4 mr-1.5 text-indigo-500" />当前页 (第{pageNum}页) AI 助手</h3>
-                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-                  {Object.keys(ACTION_META).map(key => {
-                    const ActionIcon = ACTION_META[key].icon;
-                    const isCached = pageAiData[pageNum] && pageAiData[pageNum][key] && pageAiData[pageNum][key].status === 'success';
-                    return (
-                      <button key={key} onClick={() => triggerAI(key)} disabled={!pdfDoc || isRendering} className={`flex flex-col items-center justify-center p-2 rounded-lg border bg-white transition-all disabled:opacity-50 group relative ${isCached ? 'border-green-300 bg-green-50/30' : 'border-slate-200 hover:border-blue-300 hover:shadow-md'}`}>
-                        {isCached && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-400"></span>}
-                        <ActionIcon className={`w-5 h-5 mb-1 transition-colors ${isCached ? 'text-green-600' : 'text-slate-400 group-hover:text-blue-500'}`} />
-                        <span className={`text-xs font-medium ${isCached ? 'text-green-700' : 'text-slate-600'}`}>{ACTION_META[key].title}</span>
-                      </button>
-                    )
-                  })}
-                </div>
+              
+              {/* 面板模式切换 Tab */}
+              <div className="flex bg-slate-100 p-1 m-4 mb-0 rounded-lg shrink-0 w-fit">
+                <button 
+                  onClick={() => setAiMode('cards')}
+                  className={`flex items-center px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${aiMode === 'cards' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <Icons.FileText className="w-4 h-4 mr-1.5" /> 快捷卡片
+                </button>
+                <button 
+                  onClick={() => setAiMode('chat')}
+                  className={`flex items-center px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${aiMode === 'chat' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'}`}
+                >
+                  <Icons.MessageCircle className="w-4 h-4 mr-1.5" /> 自由对话
+                </button>
               </div>
 
-              <div className="flex-1 overflow-auto p-4 bg-slate-100/50 space-y-4">
-                {currentCards.length === 0 ? (
-                  <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm"><p>已回退至稳定的 2.5 Flash 引擎。点击上方按钮开始解析。</p></div>
-                ) : (
-                  currentCards.map(([actionType, cardData]) => {
-                    const meta = ACTION_META[actionType];
-                    const ActionIcon = cardData.status === 'error' ? Icons.AlertCircle : meta.icon;
-                    
-                    const isError = cardData.status === 'error';
-                    const cardTheme = isError ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200';
-                    const headerTheme = isError ? 'bg-red-100/50 text-red-700' : 'bg-slate-50 text-slate-700';
+              {/* ---------------- 模式 1：快捷卡片 ---------------- */}
+              {aiMode === 'cards' && (
+                <>
+                  <div className="p-4 pb-2 border-b border-slate-100 shrink-0">
+                    <h3 className="text-sm font-bold text-slate-700 mb-3 flex items-center">
+                      <Icons.Sparkles className="w-4 h-4 mr-1.5 text-indigo-500" /> 当前页操作
+                    </h3>
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
+                      {Object.keys(ACTION_META).map(key => {
+                        const ActionIcon = ACTION_META[key].icon;
+                        const isCached = pageAiData[pageNum] && pageAiData[pageNum][key] && pageAiData[pageNum][key].status === 'success';
+                        return (
+                          <button key={key} onClick={() => triggerAI(key)} disabled={!pdfDoc || isRendering} className={`flex flex-col items-center justify-center p-2 rounded-lg border bg-white transition-all disabled:opacity-50 group relative ${isCached ? 'border-green-300 bg-green-50/30' : 'border-slate-200 hover:border-blue-300 hover:shadow-md'}`}>
+                            {isCached && <span className="absolute top-1 right-1 w-2 h-2 rounded-full bg-green-400"></span>}
+                            <ActionIcon className={`w-5 h-5 mb-1 transition-colors ${isCached ? 'text-green-600' : 'text-slate-400 group-hover:text-blue-500'}`} />
+                            <span className={`text-xs font-medium ${isCached ? 'text-green-700' : 'text-slate-600'}`}>{ACTION_META[key].title}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
 
-                    return (
-                      <div key={actionType} className={`rounded-xl shadow-sm border overflow-hidden ${cardTheme}`}>
-                        <div className={`flex items-center justify-between px-4 py-3 cursor-pointer select-none ${headerTheme}`} onClick={() => toggleExpand(actionType)}>
-                          <div className="flex items-center font-bold text-sm">
-                            {cardData.status === 'loading' ? <Icons.Loader className="w-4 h-4 mr-2 animate-spin text-indigo-500" /> : <ActionIcon className={`w-4 h-4 mr-2 ${isError ? 'text-red-600' : `text-${meta.color}-500`}`} />}
-                            {cardData.status === 'loading' ? '正在思考生成中...' : isError ? `${meta.title} (出错了)` : meta.title}
-                          </div>
-                          <div className="flex items-center space-x-2 text-slate-400">
-                            {cardData.isExpanded ? <Icons.ChevronUp className="w-4 h-4"/> : <Icons.ChevronDown className="w-4 h-4"/>}
-                            <div className="h-4 w-px bg-slate-300 mx-1"></div>
-                            <button onClick={(e) => deleteAction(e, actionType)} className="hover:text-red-500 p-1 transition-colors"><Icons.X className="w-4 h-4"/></button>
-                          </div>
-                        </div>
-                        
-                        {cardData.isExpanded && (
-                          <div className="p-4 border-t border-slate-100/50">
-                            {cardData.status === 'loading' ? (
-                              <div className="space-y-3">
-                                <div className="h-4 bg-slate-200 rounded w-3/4 animate-pulse"></div>
-                                <div className="h-4 bg-slate-200 rounded w-full animate-pulse"></div>
-                                <div className="h-4 bg-slate-200 rounded w-5/6 animate-pulse"></div>
+                  <div className="flex-1 overflow-auto p-4 bg-slate-50 space-y-4">
+                    {currentCards.length === 0 ? (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm"><p>点击上方按钮开始解析，结果会自动缓存。</p></div>
+                    ) : (
+                      currentCards.map(([actionType, cardData]) => {
+                        const meta = ACTION_META[actionType];
+                        const ActionIcon = cardData.status === 'error' ? Icons.AlertCircle : meta.icon;
+                        const isError = cardData.status === 'error';
+
+                        return (
+                          <div key={actionType} className={`rounded-xl shadow-sm border overflow-hidden ${isError ? 'bg-red-50 border-red-200' : 'bg-white border-slate-200'}`}>
+                            <div className={`flex items-center justify-between px-4 py-3 cursor-pointer select-none ${isError ? 'bg-red-100/50 text-red-700' : 'bg-slate-50 text-slate-700'}`} onClick={() => toggleExpand(actionType)}>
+                              <div className="flex items-center font-bold text-sm">
+                                {cardData.status === 'loading' ? <Icons.Loader className="w-4 h-4 mr-2 animate-spin text-indigo-500" /> : <ActionIcon className={`w-4 h-4 mr-2 ${isError ? 'text-red-600' : `text-${meta.color}-500`}`} />}
+                                {cardData.status === 'loading' ? '正在思考生成中...' : isError ? `${meta.title} (出错了)` : meta.title}
                               </div>
-                            ) : (
-                              <div className={`markdown-body text-sm ${isError ? 'text-red-600 font-medium' : 'text-slate-700'}`} dangerouslySetInnerHTML={renderMarkdown(cardData.data)} />
+                              <div className="flex items-center space-x-2 text-slate-400">
+                                {cardData.isExpanded ? <Icons.ChevronUp className="w-4 h-4"/> : <Icons.ChevronDown className="w-4 h-4"/>}
+                                <button onClick={(e) => deleteAction(e, actionType)} className="hover:text-red-500 p-1 ml-1 transition-colors"><Icons.X className="w-4 h-4"/></button>
+                              </div>
+                            </div>
+                            
+                            {cardData.isExpanded && (
+                              <div className="p-4 border-t border-slate-100/50">
+                                {cardData.status === 'loading' ? (
+                                  <div className="space-y-3"><div className="h-4 bg-slate-200 rounded w-3/4 animate-pulse"></div><div className="h-4 bg-slate-200 rounded w-full animate-pulse"></div></div>
+                                ) : (
+                                  <div className={`markdown-body text-sm ${isError ? 'text-red-600 font-medium' : 'text-slate-700'}`} dangerouslySetInnerHTML={renderMarkdown(cardData.data)} />
+                                )}
+                              </div>
                             )}
                           </div>
-                        )}
+                        )
+                      })
+                    )}
+                  </div>
+                </>
+              )}
+
+              {/* ---------------- 模式 2：自由对话 ---------------- */}
+              {aiMode === 'chat' && (
+                <div className="flex-1 flex flex-col bg-white">
+                  {/* 对话消息区 */}
+                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-6 bg-slate-50/50">
+                    {chatHistory.length === 0 && (
+                      <div className="h-full flex flex-col items-center justify-center text-slate-400 text-sm">
+                        <Icons.MessageCircle className="w-12 h-12 mb-3 opacity-20" />
+                        <p>请上传 PDF。上传后，您可以向我提问关于文献内容的任何问题。</p>
                       </div>
-                    )
-                  })
-                )}
-              </div>
+                    )}
+                    {chatHistory.map((msg, idx) => (
+                      <div key={idx} className={`flex ${msg.role === 'user' ? 'justify-end' : 'justify-start'}`}>
+                        <div className={`flex max-w-[85%] ${msg.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
+                          
+                          {/* 头像 */}
+                          <div className={`flex-shrink-0 w-8 h-8 rounded-full flex items-center justify-center ${msg.role === 'user' ? 'bg-indigo-100 text-indigo-600 ml-3' : 'bg-slate-800 text-white mr-3'}`}>
+                            {msg.role === 'user' ? <Icons.User className="w-5 h-5" /> : <Icons.Bot className="w-5 h-5" />}
+                          </div>
+                          
+                          {/* 气泡 */}
+                          <div className={`p-3 rounded-2xl text-sm ${msg.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 text-slate-700 rounded-tl-none shadow-sm'}`}>
+                            {msg.role === 'user' ? (
+                              msg.text 
+                            ) : (
+                              <div className="markdown-body" dangerouslySetInnerHTML={renderMarkdown(msg.text)} />
+                            )}
+                          </div>
+
+                        </div>
+                      </div>
+                    ))}
+                    {isChatting && (
+                      <div className="flex justify-start">
+                        <div className="flex max-w-[85%] flex-row">
+                          <div className="flex-shrink-0 w-8 h-8 rounded-full bg-slate-800 text-white mr-3 flex items-center justify-center"><Icons.Bot className="w-5 h-5" /></div>
+                          <div className="p-4 rounded-2xl bg-white border border-slate-200 shadow-sm rounded-tl-none flex items-center space-x-2">
+                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce"></div>
+                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.2s'}}></div>
+                             <div className="w-2 h-2 bg-slate-400 rounded-full animate-bounce" style={{animationDelay: '0.4s'}}></div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* 输入框区 */}
+                  <div className="p-4 bg-white border-t border-slate-200 shrink-0">
+                    <form onSubmit={handleChatSubmit} className="relative flex items-end shadow-sm border border-slate-300 rounded-xl overflow-hidden bg-slate-50 focus-within:ring-2 focus-within:ring-indigo-500 focus-within:border-indigo-500 transition-all">
+                      <textarea 
+                        rows="2"
+                        className="w-full max-h-32 p-3 pr-12 bg-transparent outline-none resize-none text-sm text-slate-800 placeholder-slate-400"
+                        placeholder="输入关于这篇文献的问题（AI 将结合当前页内容为您解答）..."
+                        value={chatInput}
+                        onChange={(e) => setChatInput(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === 'Enter' && !e.shiftKey) {
+                            e.preventDefault();
+                            handleChatSubmit(e);
+                          }
+                        }}
+                      ></textarea>
+                      <button 
+                        type="submit" 
+                        disabled={!chatInput.trim() || isChatting || !pdfDoc}
+                        className="absolute right-2 bottom-2 p-2 rounded-lg text-white bg-indigo-600 hover:bg-indigo-700 disabled:opacity-50 disabled:bg-slate-400 transition-colors"
+                      >
+                        <Icons.Send className="w-4 h-4" />
+                      </button>
+                    </form>
+                    <div className="mt-2 text-center text-[11px] text-slate-400">
+                      💡 提示：按 Enter 发送，Shift + Enter 换行。AI 会自动参考左侧第 {pageNum} 页的文本。
+                    </div>
+                  </div>
+                </div>
+              )}
+
             </div>
           </main>
         </div>
