@@ -4,15 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>AI 文献精读工作台 - 双引擎增强版</title>
-  
-  <script>
-    window.onerror = function(msg, url, lineNo, columnNo, error) {
-      document.body.innerHTML = '<div style="padding:40px; color:#b91c1c; background:#fef2f2; height:100vh;">' +
-        '<h2>页面加载错误 🔧</h2><p>' + msg + '</p></div>';
-      return false;
-    };
-  </script>
-
+  <script>window.onerror=function(m){document.body.innerHTML='<div style="padding:40px;color:#b91c1c;background:#fef2f2;height:100vh;"><h2>页面加载错误</h2><p>'+m+'</p></div>';return false;};</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
   <script crossorigin src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
@@ -20,410 +12,311 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/2.16.105/pdf.min.js"></script>
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.css">
   <script src="https://cdn.jsdelivr.net/npm/katex@0.16.9/dist/katex.min.js"></script>
-  
-  <script>
-    pdfjsLib.GlobalWorkerOptions.workerSrc = '';
-  </script>
-
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/turndown/7.1.2/turndown.min.js"></script>
+  <script>pdfjsLib.GlobalWorkerOptions.workerSrc='';</script>
   <style>
-    body { font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; background-color: #f8fafc; }
-    .markdown-body p { margin-bottom: 0.75em; line-height: 1.6; }
-    .markdown-body ul { list-style-type: disc; padding-left: 1.5em; margin-bottom: 0.75em; }
-    .markdown-body strong { color: #0f172a; }
-    canvas { box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1); border-radius: 4px; }
-    ::-webkit-scrollbar { width: 6px; height: 6px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 3px; }
-    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
-    .divider-resize {
-      width: 6px; cursor: col-resize;
-      background: linear-gradient(90deg, #e2e8f0 0%, #cbd5e1 50%, #e2e8f0 100%);
-      transition: background 0.15s; flex-shrink: 0; position: relative;
-    }
-    .divider-resize:hover, .divider-resize.active {
-      background: linear-gradient(90deg, #818cf8 0%, #6366f1 50%, #818cf8 100%);
-    }
-    .divider-resize::after {
-      content: ''; position: absolute; top: 50%; left: 50%;
-      transform: translate(-50%, -50%); width: 2px; height: 32px;
-      background: #94a3b8; border-radius: 2px;
-    }
+    body{font-family:ui-sans-serif,system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,"Helvetica Neue",Arial,sans-serif;background-color:#f8fafc;}
+    .markdown-body p{margin-bottom:0.75em;line-height:1.6;}
+    .markdown-body strong{color:#0f172a;}
+    canvas{box-shadow:0 4px 6px -1px rgb(0 0 0/0.1),0 2px 4px -2px rgb(0 0 0/0.1);border-radius:4px;}
+    ::-webkit-scrollbar{width:6px;height:6px;}
+    ::-webkit-scrollbar-track{background:transparent;}
+    ::-webkit-scrollbar-thumb{background:#cbd5e1;border-radius:3px;}
+    ::-webkit-scrollbar-thumb:hover{background:#94a3b8;}
+    .divider-resize{width:6px;cursor:col-resize;background:linear-gradient(90deg,#e2e8f0 0%,#cbd5e1 50%,#e2e8f0 100%);transition:background 0.15s;flex-shrink:0;position:relative;}
+    .divider-resize:hover,.divider-resize.active{background:linear-gradient(90deg,#818cf8 0%,#6366f1 50%,#818cf8 100%);}
+    .divider-resize::after{content:'';position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);width:2px;height:32px;background:#94a3b8;border-radius:2px;}
+    .note-editor{min-height:200px;outline:none;}
+    .note-editor table{border-collapse:collapse;width:100%;margin:0.5em 0;}
+    .note-editor td,.note-editor th{border:1px solid #cbd5e1;padding:6px 10px;}
+    .note-editor blockquote{border-left:3px solid #818cf8;padding-left:12px;color:#64748b;margin:0.5em 0;}
+    .note-editor code{background:#f1f5f9;padding:2px 6px;border-radius:3px;font-size:0.9em;}
+    .table-grid-cell{width:28px;height:28px;border:1px solid #e2e8f0;transition:all 0.1s;cursor:pointer;}
+    .table-grid-cell.active{background:#818cf8;border-color:#6366f1;}
+    .symbol-btn{width:32px;height:28px;font-size:14px;border:1px solid #e2e8f0;border-radius:4px;background:white;cursor:pointer;display:flex;align-items:center;justify-content:center;}
+    .symbol-btn:hover{background:#eef2ff;border-color:#818cf8;}
   </style>
 </head>
-<body class="text-slate-800">
-  <div id="root"></div>
+<body class="text-slate-800"><div id="root"></div>
+<script type="text/babel">
+const {useState,useEffect,useRef,useCallback}=React;
 
-  <script type="text/babel">
-    const { useState, useEffect, useRef } = React;
+const DB_NAME='ai-ppr-db',DB_VER=2;
+function idb(){return new Promise((ok,no)=>{const r=indexedDB.open(DB_NAME,DB_VER);r.onupgradeneeded=e=>{const d=e.target.result,tx=e.target.transaction;if(!d.objectStoreNames.contains('papers')){const s=d.createObjectStore('papers',{keyPath:'id'});s.createIndex('username','username',{unique:false});}else if(!tx.objectStore('papers').indexNames.contains('username')){tx.objectStore('papers').createIndex('username','username',{unique:false});}if(!d.objectStoreNames.contains('users'))d.createObjectStore('users',{keyPath:'username'});};r.onsuccess=e=>ok(e.target.result);r.onerror=e=>no(e.target.error);});}
+async function dbPut(s,o){const db=await idb();return new Promise((ok,no)=>{const t=db.transaction(s,'readwrite');t.objectStore(s).put(o);t.oncomplete=ok;t.onerror=no;});}
+async function dbGet(s,k){const db=await idb();return new Promise((ok,no)=>{const t=db.transaction(s,'readonly');const r=t.objectStore(s).get(k);r.onsuccess=()=>ok(r.result);r.onerror=no;});}
+async function dbGetAll(s){const db=await idb();return new Promise((ok,no)=>{const t=db.transaction(s,'readonly');const r=t.objectStore(s).getAll();r.onsuccess=()=>ok(r.result);r.onerror=no;});}
+async function dbGetByUser(s,u){const db=await idb();return new Promise((ok,no)=>{const t=db.transaction(s,'readonly');const idx=t.objectStore(s).index('username');const r=idx.getAll(u);r.onsuccess=()=>ok(r.result);r.onerror=no;});}
 
-    const Icons = {
-      FileText: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>,
-      Upload: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,
-      ChevronLeft: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="15 18 9 12 15 6"/></svg>,
-      ChevronRight: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 18 15 12 9 6"/></svg>,
-      Settings: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,
-      Loader: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>,
-      Language: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>,
-      Sparkles: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/></svg>,
-      Brain: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 5a3 3 0 1 0-5.997.125 4 4 0 0 0-2.526 5.77 4 4 0 0 0 .556 6.588A4 4 0 1 0 12 18Z"/><path d="M9 13a4.5 4.5 0 0 0 3-4"/><path d="M6.003 5.38A4 4 0 0 0 4 9c0 2.21 1.79 4 4 4h4"/><path d="M17 13a4.5 4.5 0 0 0-3-4"/><path d="M12 10h4a4 4 0 0 0 4-4c0-2.21-1.79-4-4-4a3 3 0 1 0-5.997.125"/><path d="M12 18v4"/><path d="M8 22h8"/></svg>,
-      GradCap: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 10v6M2 10l10-5 10 5-10 5z"/><path d="M6 12v5c3 3 9 3 12 0v-5"/></svg>,
-      ChevronDown: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 12 15 18 9"/></svg>,
-      ChevronUp: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="18 15 12 9 6 15"/></svg>,
-      X: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,
-      MessageCircle: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,
-      Send: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,
-      User: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,
-      Bot: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>,
-      AlertCircle: ({className}) => <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"></circle><line x1="12" y1="8" x2="12" y2="12"></line><line x1="12" y1="16" x2="12.01" y2="16"></line></svg>
-    };
+const Icons={FileText:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>,Upload:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>,ChevronLeft:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="15 18 9 12 15 6"/></svg>,ChevronRight:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="9 18 15 12 9 6"/></svg>,Settings:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>,Loader:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="12" y1="2" x2="12" y2="6"/><line x1="12" y1="18" x2="12" y2="22"/><line x1="4.93" y1="4.93" x2="7.76" y2="7.76"/><line x1="16.24" y1="16.24" x2="19.07" y2="19.07"/><line x1="2" y1="12" x2="6" y2="12"/><line x1="18" y1="12" x2="22" y2="12"/><line x1="4.93" y1="19.07" x2="7.76" y2="16.24"/><line x1="16.24" y1="7.76" x2="19.07" y2="4.93"/></svg>,Language:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="m5 8 6 6"/><path d="m4 14 6-6 2-3"/><path d="M2 5h12"/><path d="M7 2h1"/><path d="m22 22-5-10-5 10"/><path d="M14 18h6"/></svg>,Sparkles:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 3l1.912 5.813a2 2 0 0 0 1.275 1.275L21 12l-5.813 1.912a2 2 0 0 0-1.275 1.275L12 21l-1.912-5.813a2 2 0 0 0-1.275-1.275L3 12l5.813-1.912a2 2 0 0 0 1.275-1.275L12 3z"/></svg>,ChevronDown:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="6 9 12 15 18 9"/></svg>,ChevronUp:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><polyline points="18 15 12 9 6 15"/></svg>,X:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>,MessageCircle:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>,Send:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></svg>,User:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>,Bot:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="10" rx="2"/><circle cx="12" cy="5" r="2"/><path d="M12 7v4"/><line x1="8" y1="16" x2="8" y2="16"/><line x1="16" y1="16" x2="16" y2="16"/></svg>,Bold:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 4h8a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/><path d="M6 12h9a4 4 0 0 1 4 4 4 4 0 0 1-4 4H6z"/></svg>,Italic:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><line x1="19" y1="4" x2="10" y2="4"/><line x1="14" y1="20" x2="5" y2="20"/><line x1="15" y1="4" x2="9" y2="20"/></svg>,Underline:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5"><path d="M6 4v6a6 6 0 0 0 12 0V4"/><line x1="4" y1="20" x2="20" y2="20"/></svg>,Table:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="3" x2="9" y2="21"/><line x1="15" y1="3" x2="15" y2="21"/></svg>,Image:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/></svg>,Pen:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg>,Download:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>,Scissors:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><circle cx="6" cy="6" r="3"/><circle cx="6" cy="18" r="3"/><line x1="20" y1="4" x2="8.12" y2="15.88"/><line x1="14.47" y1="14.48" x2="20" y2="20"/><line x1="8.12" y1="8.12" x2="12" y2="12"/></svg>,LogOut:p=><svg {...p} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>};
 
-    const callLlmAPI = async (prompt, modelSource, apiKey) => {
-      if (modelSource === 'deepseek') {
-        const url = 'https://api.deepseek.com/chat/completions';
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Authorization': `Bearer ${apiKey}`
-          },
-          body: JSON.stringify({
-            model: "deepseek-chat",
-            messages: [{ role: "user", content: prompt }],
-            stream: false
-          })
-        });
-        if (!response.ok) throw new Error(`DeepSeek Error: ${response.status}`);
-        const data = await response.json();
-        return data.choices[0].message.content;
-      } else {
-        const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`;
-        const response = await fetch(url, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ contents: [{ parts: [{ text: prompt }] }] })
-        });
-        if (!response.ok) {
-          if (response.status === 429) throw new Error("429");
-          throw new Error(`Gemini Error: ${response.status}`);
-        }
-        const data = await response.json();
-        return data.candidates?.[0]?.content?.parts?.[0]?.text;
-      }
-    };
+const callLlmAPI=async(prompt,modelSource,apiKey)=>{if(modelSource==='deepseek'){const r=await fetch('https://api.deepseek.com/chat/completions',{method:'POST',headers:{'Content-Type':'application/json','Authorization':`Bearer ${apiKey}`},body:JSON.stringify({model:"deepseek-chat",messages:[{role:"user",content:prompt}],stream:false})});if(!r.ok)throw new Error(`DeepSeek Error: ${r.status}`);return(await r.json()).choices[0].message.content;}else{const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${apiKey}`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})});if(!r.ok){if(r.status===429)throw new Error("429");throw new Error(`Gemini Error: ${r.status}`);}return(await r.json()).candidates?.[0]?.content?.parts?.[0]?.text;}};
 
-    const renderMarkdown = (text) => {
-      if (!text) return { __html: "" };
-      const mathBlocks = [];
-      let html = text
-        .replace(/\$\$([\s\S]*?)\$\$/g, (_, m) => {
-          const i = mathBlocks.length;
-          try { mathBlocks.push(katex.renderToString(m.trim(), { displayMode: true, throwOnError: false })); }
-          catch(e) { mathBlocks.push(`<code>${m}</code>`); }
-          return `%%MD${i}%%`;
-        })
-        .replace(/\$(.+?)\$/g, (_, m) => {
-          const i = mathBlocks.length;
-          try { mathBlocks.push(katex.renderToString(m.trim(), { displayMode: false, throwOnError: false })); }
-          catch(e) { mathBlocks.push(`<code>${m}</code>`); }
-          return `%%MI${i}%%`;
-        });
-      html = html
-        .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
-        .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
-        .replace(/\*(.*?)\*/g, '<em>$1</em>')
-        .replace(/\n\n/g, '</p><p>')
-        .replace(/\n/g, '<br/>');
-      html = `<p>${html}</p>`
-        .replace(/%%MD(\d+)%%/g, (_, i) => mathBlocks[parseInt(i)])
-        .replace(/%%MI(\d+)%%/g, (_, i) => mathBlocks[parseInt(i)]);
-      return { __html: html };
-    };
+const renderMarkdown=(text)=>{if(!text)return{__html:""};const mathBlocks=[];let html=text.replace(/\$\$([\s\S]*?)\$\$/g,(_,m)=>{const i=mathBlocks.length;try{mathBlocks.push(katex.renderToString(m.trim(),{displayMode:true,throwOnError:false}));}catch(e){mathBlocks.push(`<code>${m}</code>`);}return`%%MD${i}%%`;}).replace(/\$(.+?)\$/g,(_,m)=>{const i=mathBlocks.length;try{mathBlocks.push(katex.renderToString(m.trim(),{displayMode:false,throwOnError:false}));}catch(e){mathBlocks.push(`<code>${m}</code>`);}return`%%MI${i}%%`;});html=html.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/\*\*(.*?)\*\*/g,'<strong>$1</strong>').replace(/\*(.*?)\*/g,'<em>$1</em>').replace(/\n\n/g,'</p><p>').replace(/\n/g,'<br/>');html=`<p>${html}</p>`.replace(/%%MD(\d+)%%/g,(_,i)=>mathBlocks[parseInt(i)]).replace(/%%MI(\d+)%%/g,(_,i)=>mathBlocks[parseInt(i)]);return{__html:html};};
 
-    const ACTION_META = {
-      translate: { title: "本页翻译", color: "blue", icon: Icons.Language },
-      explain: { title: "大白话讲解", color: "indigo", icon: Icons.Sparkles }
-    };
+const turndownService=new TurndownService({headingStyle:'atx',codeBlockStyle:'fenced'});
+const execCmd=(cmd,val)=>{document.execCommand(cmd,false,val);};
+const insertHTML=(html)=>{document.execCommand('insertHTML',false,html);};
 
-    function App() {
-      const [modelSource, setModelSource] = useState(localStorage.getItem('llm_source') || 'gemini');
-      const [geminiKey, setGeminiKey] = useState(localStorage.getItem('gemini_api_key') || '');
-      const [deepseekKey, setDeepseekKey] = useState(localStorage.getItem('deepseek_api_key') || '');
-      const [showSettings, setShowSettings] = useState(false);
-      
-      const [pdfDoc, setPdfDoc] = useState(null);
-      const [pageNum, setPageNum] = useState(1);
-      const [numPages, setNumPages] = useState(0);
-      const [isRendering, setIsRendering] = useState(false);
-      const [pageText, setPageText] = useState(""); 
-      const canvasRef = useRef(null);
+const SYMBOLS=[['\u03b1','\u03b2','\u03b3','\u03b4','\u03b5','\u03b8','\u03bb','\u03bc','\u03c0','\u03c3','\u03c6','\u03c8','\u03c9'],['\u0393','\u0394','\u0398','\u039b','\u03a0','\u03a3','\u03a6','\u03a8','\u03a9'],['\u2202','\u2207','\u222b','\u222e','\u2211','\u220f','\u221a','\u221e','\u00b1','\u2213','\u00b7','\u00d7'],['\u2192','\u21d2','\u21d4','\u2194','\u2191','\u2193','\u27e8','\u27e9','\u2264','\u2265','\u2260','\u2248'],['\u210f','\u2020','\u2297','\u2295','\u25a1','\u25b3','\u27e8|','|\u27e9','det','Tr','exp','log'],['x^{}','x_{}','e^{}','^{2}','_{0}','_{i}','_{n}','_{ij}','_{\u03bc\u03bd}']];
+const ACTION_META={translate:{title:"本页翻译",icon:Icons.Language},explain:{title:"大白话讲解",icon:Icons.Sparkles}};
 
-      const [aiMode, setAiMode] = useState('cards');
-      const [pageAiData, setPageAiData] = useState({});
-      const [chatHistory, setChatHistory] = useState([]);
-      const [chatInput, setChatInput] = useState("");
-      const [isChatting, setIsChatting] = useState(false);
-      const chatScrollRef = useRef(null);
-      const mainRef = useRef(null);
-      const [splitRatio, setSplitRatio] = useState(50);
-      const [isDragging, setIsDragging] = useState(false);
-      const handleMouseDown = () => setIsDragging(true);
-      const handleMouseUp = () => setIsDragging(false);
-      const handleMouseMove = (e) => {
-        if (!isDragging || !mainRef.current) return;
-        const rect = mainRef.current.getBoundingClientRect();
-        const ratio = Math.max(20, Math.min(80, ((e.clientX - rect.left) / rect.width) * 100));
-        setSplitRatio(ratio);
-      };
+const hashStr=(s)=>{let h=0;for(let i=0;i<s.length;i++){h=((h<<5)-h)+s.charCodeAt(i);h|=0;}return Math.abs(h).toString(16);};
 
-      const handleSaveConfig = () => {
-        localStorage.setItem('llm_source', modelSource);
-        localStorage.setItem('gemini_api_key', geminiKey);
-        localStorage.setItem('deepseek_api_key', deepseekKey);
-        setShowSettings(false);
-      };
+function App(){
+const[username,setUsername]=useState(localStorage.getItem('ppr_user')||'');
+const[loginInput,setLoginInput]=useState('');
+const[recentUsers,setRecentUsers]=useState([]);
+const[modelSource,setModelSource]=useState(localStorage.getItem('llm_source')||'gemini');
+const[geminiKey,setGeminiKey]=useState(localStorage.getItem('gemini_api_key')||'');
+const[deepseekKey,setDeepseekKey]=useState(localStorage.getItem('deepseek_api_key')||'');
+const[showSettings,setShowSettings]=useState(false);
+const[pdfDoc,setPdfDoc]=useState(null);
+const[pageNum,setPageNum]=useState(1);
+const[numPages,setNumPages]=useState(0);
+const[isRendering,setIsRendering]=useState(false);
+const[pageText,setPageText]=useState("");
+const canvasRef=useRef(null);
+const[aiMode,setAiMode]=useState('cards');
+const[pageAiData,setPageAiData]=useState({});
+const[chatHistory,setChatHistory]=useState([]);
+const[chatInput,setChatInput]=useState("");
+const[isChatting,setIsChatting]=useState(false);
+const chatScrollRef=useRef(null);
+const mainRef=useRef(null);
+const[split1,setSplit1]=useState(30);
+const[split2,setSplit2]=useState(25);
+const[dragTarget,setDragTarget]=useState(null);
+const noteRef=useRef(null);
+const[noteContent,setNoteContent]=useState('');
+const[paperName,setPaperName]=useState('');
+const[showFormula,setShowFormula]=useState(false);
+const[formulaInput,setFormulaInput]=useState('');
+const[formulaPreview,setFormulaPreview]=useState('');
+const[showDrawing,setShowDrawing]=useState(false);
+const[showTableGrid,setShowTableGrid]=useState(false);
+const[tableHover,setTableHover]=useState({r:0,c:0});
+const[isScreenshotMode,setIsScreenshotMode]=useState(false);
+const[screenshotRect,setScreenshotRect]=useState(null);
+const screenshotStart=useRef(null);
+const drawCanvasRef=useRef(null);
+const[drawColor,setDrawColor]=useState('#1e293b');
+const[drawSize,setDrawSize]=useState(3);
+const[drawEraser,setDrawEraser]=useState(false);
+const drawCtxRef=useRef(null);
+const drawIsDrawing=useRef(false);
+const[showSidebar,setShowSidebar]=useState(false);
+const[showPDF,setShowPDF]=useState(true);
+const[showAI,setShowAI]=useState(true);
+const[showNotes,setShowNotes]=useState(true);
+const[paperHistory,setPaperHistory]=useState([]);
+const[paperFp,setPaperFp]=useState('');
 
-      const handleFileUpload = async (event) => {
-        const file = event.target.files[0];
-        if (!file) return;
-        try {
-          setIsRendering(true);
-          setPageAiData({}); 
-          setChatHistory([{ role: 'ai', text: "文献已载入。我是您的 AI 助教，支持 Gemini 和 DeepSeek 双引擎。您可以随时向我提问。" }]);
-          const arrayBuffer = await file.arrayBuffer();
-          const loadedPdf = await window.pdfjsLib.getDocument({ data: arrayBuffer }).promise;
-          setPdfDoc(loadedPdf);
-          setNumPages(loadedPdf.numPages);
-          setPageNum(1); 
-        } catch (e) { alert("PDF 加载失败"); setIsRendering(false); }
-      };
+const onDiv1Down=()=>setDragTarget(1);
+const onDiv2Down=()=>setDragTarget(2);
+const onDragUp=()=>setDragTarget(null);
+const onDragMove=(e)=>{if(!dragTarget||!mainRef.current)return;const r=mainRef.current.getBoundingClientRect();const pct=((e.clientX-r.left)/r.width)*100;if(dragTarget===1)setSplit1(Math.max(15,Math.min(55,pct)));else{const notesPct=100-pct;const maxNotes=100-split1-15;setSplit2(Math.max(15,Math.min(maxNotes,notesPct)));}};
 
-      useEffect(() => {
-        let renderTask = null;
-        const renderPage = async () => {
-          if (!pdfDoc || !canvasRef.current) return;
-          setIsRendering(true);
-          try {
-            const page = await pdfDoc.getPage(pageNum);
-            const viewport = page.getViewport({ scale: 1.5 });
-            const canvas = canvasRef.current;
-            const context = canvas.getContext('2d');
-            canvas.height = viewport.height;
-            canvas.width = viewport.width;
-            renderTask = page.render({ canvasContext: context, viewport: viewport });
-            await renderTask.promise;
-            const textContent = await page.getTextContent();
-            setPageText(textContent.items.map(item => item.str).join(" ").replace(/\s+/g, " "));
-          } catch (e) {} finally { setIsRendering(false); }
-        };
-        renderPage();
-        return () => renderTask?.cancel();
-      }, [pdfDoc, pageNum]);
+const loadHistory=useCallback(async(u)=>{const papers=await dbGetByUser('papers',u);setPaperHistory(papers.sort((a,b)=>b.visitedAt-a.visitedAt));},[]);
 
-      useEffect(() => {
-        if (aiMode === 'chat' && chatScrollRef.current) {
-          chatScrollRef.current.scrollTop = chatScrollRef.current.scrollHeight;
-        }
-      }, [chatHistory, isChatting, aiMode]);
+useEffect(()=>{dbGetAll('users').then(u=>setRecentUsers(u.map(x=>x.username)));},[]);
 
-      const triggerAI = async (actionType) => {
-        const key = modelSource === 'gemini' ? geminiKey : deepseekKey;
-        if (!key) return setShowSettings(true);
-        if (!pageText) return alert("当前页无文本");
+const doLogin=()=>{const u=loginInput.trim();if(!u)return;localStorage.setItem('ppr_user',u);setUsername(u);dbPut('users',{username:u,lastLogin:Date.now()});loadHistory(u);};
+const doLogout=()=>{localStorage.removeItem('ppr_user');setUsername('');setPdfDoc(null);setPageAiData({});setChatHistory([]);setNoteContent('');setPaperName('');setPaperHistory([]);};
 
-        const targetPage = pageNum;
-        const currentData = pageAiData[targetPage] || {};
-        if (currentData[actionType]?.status === 'success') {
-          setPageAiData(prev => ({ ...prev, [targetPage]: { ...prev[targetPage], [actionType]: { ...prev[targetPage][actionType], isExpanded: true } } }));
-          return;
-        }
-        if (currentData[actionType]?.status === 'loading') return;
+const restorePaper=useCallback(async(pdfObj,numP)=>{if(!username)return;const fp=hashStr(username+'|'+(pdfObj._pdfInfo?.fingerprint||'')+'|'+numP);const saved=await dbGet('papers',fp);if(saved){setPageAiData(saved.pageAiData||{});setChatHistory(saved.chatHistory||[]);setNoteContent(saved.noteContent||'');setPaperName(saved.paperName||'');if(saved.showPDF!==undefined)setShowPDF(saved.showPDF);if(saved.showAI!==undefined)setShowAI(saved.showAI);if(saved.showNotes!==undefined)setShowNotes(saved.showNotes);}return fp;},[username]);
+const autoSave=useCallback(async(fp,data)=>{if(!username||!fp)return;await dbPut('papers',{id:fp,username,...data,visitedAt:Date.now()});loadHistory(username);},[username]);
 
-        setPageAiData(prev => ({ ...prev, [targetPage]: { ...prev[targetPage], [actionType]: { status: 'loading', data: '', isExpanded: true } } }));
+const handleFileUpload=async(event)=>{const file=event.target.files[0];if(!file)return;try{setIsRendering(true);setPageAiData({});setChatHistory([{role:'ai',text:"文献已载入。我是您的 AI 助教，支持 Gemini 和 DeepSeek 双引擎。您可以随时向我提问。"}]);const ab=await file.arrayBuffer();const loaded=await window.pdfjsLib.getDocument({data:ab}).promise;setPdfDoc(loaded);setNumPages(loaded.numPages);setPageNum(1);const fp=await restorePaper(loaded,loaded.numPages);setPaperFp(fp);}catch(e){alert("PDF 加载失败");setIsRendering(false);}};
 
-        let prompt = "";
-        const prompts = {
-          translate: `翻译以下学术段落为地道中文，保留 LaTeX 公式（用 $...$ 或 $$...$$ 包裹）：\n${pageText}`,
-          explain: `用直白大白话（带比喻）讲解本页物理核心，保留 LaTeX 公式（用 $...$ 或 $$...$$ 包裹）：\n${pageText}`
-        };
-        prompt = prompts[actionType];
+useEffect(()=>{let rt=null;const rp=async()=>{if(!pdfDoc||!canvasRef.current)return;setIsRendering(true);try{const page=await pdfDoc.getPage(pageNum);const vp=page.getViewport({scale:1.5});const c=canvasRef.current;c.height=vp.height;c.width=vp.width;rt=page.render({canvasContext:c.getContext('2d'),viewport:vp});await rt.promise;const tc=await page.getTextContent();setPageText(tc.items.map(i=>i.str).join(" ").replace(/\s+/g," "));}catch(e){}finally{setIsRendering(false);}};rp();return()=>rt?.cancel();},[pdfDoc,pageNum]);
 
-        try {
-          const result = await callLlmAPI(prompt, modelSource, key);
-          setPageAiData(prev => ({ ...prev, [targetPage]: { ...prev[targetPage], [actionType]: { status: 'success', data: result, isExpanded: true } } }));
-        } catch (error) {
-          let msg = "请求失败";
-          if (error.message === "429") msg = "频率受限，请稍后";
-          setPageAiData(prev => ({ ...prev, [targetPage]: { ...prev[targetPage], [actionType]: { status: 'error', data: msg, isExpanded: true } } }));
-        }
-      };
+useEffect(()=>{if(pdfDoc&&paperFp){autoSave(paperFp,{pageAiData,chatHistory,noteContent,paperName,showPDF,showAI,showNotes});}},[pageAiData,chatHistory,noteContent]);
+useEffect(()=>{if(aiMode==='chat'&&chatScrollRef.current)chatScrollRef.current.scrollTop=chatScrollRef.current.scrollHeight;},[chatHistory,isChatting,aiMode]);
 
-      const handleChatSubmit = async (e) => {
-        e.preventDefault();
-        const key = modelSource === 'gemini' ? geminiKey : deepseekKey;
-        if (!chatInput.trim()) return;
-        if (!key) return setShowSettings(true);
+const triggerAI=async(actionType)=>{const key=modelSource==='gemini'?geminiKey:deepseekKey;if(!key)return setShowSettings(true);if(!pageText)return alert("当前页无文本");const targetPage=pageNum;const currentData=pageAiData[targetPage]||{};if(currentData[actionType]?.status==='success'){setPageAiData(prev=>({...prev,[targetPage]:{...prev[targetPage],[actionType]:{...prev[targetPage][actionType],isExpanded:true}}}));return;}if(currentData[actionType]?.status==='loading')return;setPageAiData(prev=>({...prev,[targetPage]:{...prev[targetPage],[actionType]:{status:'loading',data:'',isExpanded:true}}}));const prompts={translate:`翻译以下学术段落为地道中文，保留 LaTeX 公式（用 $...$ 或 $$...$$ 包裹）：\n${pageText}`,explain:`用直白大白话（带比喻）讲解本页物理核心，保留 LaTeX 公式（用 $...$ 或 $$...$$ 包裹）：\n${pageText}`};try{const result=await callLlmAPI(prompts[actionType],modelSource,key);setPageAiData(prev=>({...prev,[targetPage]:{...prev[targetPage],[actionType]:{status:'success',data:result,isExpanded:true}}}));}catch(error){let msg="请求失败";if(error.message==="429")msg="频率受限，请稍后";setPageAiData(prev=>({...prev,[targetPage]:{...prev[targetPage],[actionType]:{status:'error',data:msg,isExpanded:true}}}));}};
 
-        const userMsg = { role: 'user', text: chatInput };
-        setChatHistory(prev => [...prev, userMsg]);
-        setChatInput("");
-        setIsChatting(true);
+const handleChatSubmit=async(e)=>{e.preventDefault();const key=modelSource==='gemini'?geminiKey:deepseekKey;if(!chatInput.trim())return;if(!key)return setShowSettings(true);const userMsg={role:'user',text:chatInput};setChatHistory(prev=>[...prev,userMsg]);setChatInput("");setIsChatting(true);const prompt=`你是物理助教。当前阅读第 ${pageNum} 页：\n${pageText.substring(0,1500)}\n提问：${userMsg.text}`;try{const result=await callLlmAPI(prompt,modelSource,key);setChatHistory(prev=>[...prev,{role:'ai',text:result}]);}catch(e){setChatHistory(prev=>[...prev,{role:'ai',text:"发送失败，请检查配置或网络"}]);}finally{setIsChatting(false);}};
 
-        const prompt = `你是物理助教。当前阅读第 ${pageNum} 页：\n${pageText.substring(0,1500)}\n提问：${userMsg.text}`;
-        try {
-          const result = await callLlmAPI(prompt, modelSource, key);
-          setChatHistory(prev => [...prev, { role: 'ai', text: result }]);
-        } catch (e) {
-          setChatHistory(prev => [...prev, { role: 'ai', text: "发送失败，请检查配置或网络" }]);
-        } finally { setIsChatting(false); }
-      };
+const noteExec=(cmd,val)=>{noteRef.current?.focus();execCmd(cmd,val);};
+const noteInsert=(html)=>{noteRef.current?.focus();insertHTML(html);setNoteContent(noteRef.current?.innerHTML||'');};
 
-      return (
-        <div className="min-h-screen flex flex-col h-screen overflow-hidden">
-          <header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
-            <div className="flex items-center space-x-3 text-slate-800">
-              <div className="p-1.5 bg-indigo-100 rounded-lg text-indigo-600"><Icons.FileText className="w-5 h-5" /></div>
-              <div><h1 className="text-lg font-bold leading-tight">文献精读工作台</h1><p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{modelSource} 引擎驱动</p></div>
-            </div>
-            <div className="flex items-center space-x-4">
-              <label className="flex items-center text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-sm">
-                <Icons.Upload className="w-4 h-4 mr-2" />上传 PDF
-                <input type="file" hidden accept=".pdf" onChange={handleFileUpload} />
-              </label>
-              <button onClick={() => setShowSettings(true)} className="flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 px-2 py-2 transition-colors"><Icons.Settings className="w-5 h-5" /></button>
-            </div>
-          </header>
+const insertTable=(rows,cols)=>{let h='<table style="border-collapse:collapse;width:100%;table-layout:auto">';h+='<thead><tr>';for(let j=0;j<cols;j++)h+=`<th style="border:1px solid #d1d5db;padding:6px 8px;resize:horizontal;overflow:auto;min-width:60px;background:#f8fafc;font-weight:600;text-align:left;font-size:13px">列${j+1}</th>`;h+='</tr></thead><tbody>';for(let i=0;i<rows;i++){h+='<tr>';for(let j=0;j<cols;j++)h+=`<td style="border:1px solid #d1d5db;padding:6px 8px;min-width:60px;font-size:13px">&nbsp;</td>`;h+='</tr>';}h+='</tbody></table><p><br></p>';noteInsert(h);setShowTableGrid(false);};
 
-          {/* ----- 设置弹窗：智能联动输入框 ----- */}
-          {showSettings && (
-            <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
-              <div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
-                <h3 className="text-xl font-bold mb-4">配置 AI 引擎</h3>
-                <div className="space-y-4">
-                  <div>
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">选择当前引擎</label>
-                    <select value={modelSource} onChange={e => setModelSource(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500">
-                      <option value="gemini">Gemini 2.5 (需要网络助理)</option>
-                      <option value="deepseek">DeepSeek (国内极速直连)</option>
-                    </select>
-                  </div>
-                  
-                  {/* 核心改动点：动态显示对应引擎的输入框 */}
-                  <div className="mt-4">
-                    <label className="block text-xs font-bold text-slate-400 uppercase mb-1">
-                      {modelSource === 'gemini' ? 'Gemini API Key' : 'DeepSeek API Key'}
-                    </label>
-                    <input 
-                      type="password" 
-                      value={modelSource === 'gemini' ? geminiKey : deepseekKey} 
-                      onChange={e => modelSource === 'gemini' ? setGeminiKey(e.target.value) : setDeepseekKey(e.target.value)} 
-                      className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" 
-                      placeholder={modelSource === 'gemini' ? "AIzaSy..." : "sk-..."} 
-                    />
-                  </div>
-                  
-                </div>
-                <div className="flex justify-end space-x-2 mt-6">
-                  <button onClick={() => setShowSettings(false)} className="px-4 py-2 text-sm bg-slate-100 rounded-lg">取消</button>
-                  <button onClick={handleSaveConfig} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg">保存配置</button>
-                </div>
-              </div>
-            </div>
-          )}
+useEffect(()=>{if(formulaInput){try{setFormulaPreview(katex.renderToString(formulaInput,{throwOnError:false}));}catch(e){setFormulaPreview('<span class="text-red-500">公式语法错误</span>');}}else{setFormulaPreview('');}},[formulaInput]);
+const insertFormula=()=>{if(formulaInput.trim()){noteInsert(`<span data-latex="${formulaInput.replace(/"/g,'&quot;')}">\\(${formulaInput}\\)</span> `);setFormulaInput('');setShowFormula(false);}};
 
-          <main className="flex-1 flex overflow-hidden bg-slate-100" ref={mainRef} onMouseMove={handleMouseMove} onMouseUp={handleMouseUp} onMouseLeave={handleMouseUp} style={{cursor: isDragging ? 'col-resize' : 'auto', userSelect: isDragging ? 'none' : 'auto'}}>
-            <div style={{width: `${splitRatio}%`}} className="h-full flex flex-col relative overflow-hidden">
-              <div className="h-10 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-10">
-                <button onClick={() => setPageNum(p => Math.max(1, p-1))} className="p-1 rounded text-slate-600 hover:bg-slate-100"><Icons.ChevronLeft className="w-5 h-5" /></button>
-                <div className="text-xs font-bold text-slate-500">{pdfDoc ? `第 ${pageNum} / ${numPages} 页` : '待上传'}</div>
-                <button onClick={() => setPageNum(p => Math.min(numPages, p+1))} className="p-1 rounded text-slate-600 hover:bg-slate-100"><Icons.ChevronRight className="w-5 h-5" /></button>
-              </div>
-              <div className="flex-1 overflow-auto flex justify-center p-4 relative">
-                {!pdfDoc ? (
-                  <div className="flex flex-col items-center justify-center text-slate-300 h-full"><Icons.FileText className="w-16 h-16 mb-4 opacity-20" /><p>点击上方按钮上传 PDF</p></div>
-                ) : (
-                  <div className="relative inline-block">
-                    {isRendering && <div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10"><Icons.Loader className="w-8 h-8 text-indigo-500 animate-spin" /></div>}
-                    <canvas ref={canvasRef} className="max-w-full h-auto bg-white shadow-lg"></canvas>
-                  </div>
-                )}
-              </div>
-            </div>
-            <div className={`divider-resize ${isDragging ? 'active' : ''}`} onMouseDown={handleMouseDown}></div>
-            <div style={{width: `${100 - splitRatio}%`}} className="h-full flex flex-col bg-white overflow-hidden">
-              <div className="flex bg-slate-100 p-1 m-4 mb-2 rounded-lg shrink-0 w-fit">
-                <button onClick={() => setAiMode('cards')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${aiMode === 'cards' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>快捷操作</button>
-                <button onClick={() => setAiMode('chat')} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${aiMode === 'chat' ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500'}`}>自由对话</button>
-              </div>
+const initDrawing=()=>{setShowDrawing(true);setTimeout(()=>{const c=drawCanvasRef.current;if(c){c.width=c.offsetWidth;c.height=400;drawCtxRef.current=c.getContext('2d');drawCtxRef.current.fillStyle='#ffffff';drawCtxRef.current.fillRect(0,0,c.width,c.height);}},50);};
+const drawStart=(e)=>{const c=drawCanvasRef.current;if(!c)return;const r=c.getBoundingClientRect();drawIsDrawing.current=true;drawCtxRef.current.beginPath();drawCtxRef.current.moveTo(e.clientX-r.left,e.clientY-r.top);drawCtxRef.current.strokeStyle=drawEraser?'#ffffff':'#1e293b';drawCtxRef.current.lineWidth=drawEraser?12:3;};
+const drawMove=(e)=>{if(!drawIsDrawing.current)return;const c=drawCanvasRef.current;const r=c.getBoundingClientRect();drawCtxRef.current.lineTo(e.clientX-r.left,e.clientY-r.top);drawCtxRef.current.stroke();};
+const drawEnd=()=>{drawIsDrawing.current=false;drawCtxRef.current.closePath();};
+const clearDrawing=()=>{const c=drawCanvasRef.current;if(c&&drawCtxRef.current){drawCtxRef.current.fillStyle='#ffffff';drawCtxRef.current.fillRect(0,0,c.width,c.height);}};
+const insertDrawing=()=>{const c=drawCanvasRef.current;if(c){const data=c.toDataURL('image/png');noteInsert(`<img src="${data}" style="max-width:100%"/>`);}setShowDrawing(false);};
 
-              {aiMode === 'cards' ? (
-                <div className="flex-1 flex flex-col overflow-hidden">
-                  <div className="px-4 pb-4 grid grid-cols-2 gap-2 shrink-0">
-                    {Object.keys(ACTION_META).map(key => {
-                      const meta = ACTION_META[key];
-                      const ActionIcon = meta.icon;
-                      const isCached = pageAiData[pageNum]?.[key]?.status === 'success';
-                      return (
-                        <button key={key} onClick={() => triggerAI(key)} disabled={!pdfDoc} className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all relative ${isCached ? 'border-green-200 bg-green-50' : 'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
-                          <ActionIcon className={`w-5 h-5 mb-1 ${isCached ? 'text-green-600' : 'text-slate-400'}`} />
-                          <span className={`text-[10px] font-bold ${isCached ? 'text-green-700' : 'text-slate-600'}`}>{meta.title}</span>
-                          {isCached && <div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-500"></div>}
-                        </button>
-                      )
-                    })}
-                  </div>
-                  <div className="flex-1 overflow-auto p-4 bg-slate-50 space-y-4">
-                    {Object.entries(pageAiData[pageNum] || {}).map(([type, card]) => (
-                      <div key={type} className={`rounded-xl shadow-sm border overflow-hidden ${card.status === 'error' ? 'border-red-200' : 'border-slate-200 bg-white'}`}>
-                        <div className="flex items-center justify-between px-4 py-3 cursor-pointer select-none bg-slate-50/50" onClick={() => setPageAiData(prev => ({ ...prev, [pageNum]: { ...prev[pageNum], [type]: { ...card, isExpanded: !card.isExpanded } } }))}>
-                          <div className="flex items-center font-bold text-xs">
-                            {card.status === 'loading' ? <Icons.Loader className="w-3.5 h-3.5 mr-2 animate-spin text-indigo-500" /> : <Icons.MessageCircle className={`w-3.5 h-3.5 mr-2 text-${ACTION_META[type].color}-500`} />}
-                            {ACTION_META[type].title}
-                          </div>
-                          <div className="flex items-center space-x-2">
-                             {card.isExpanded ? <Icons.ChevronUp className="w-4 h-4 text-slate-400"/> : <Icons.ChevronDown className="w-4 h-4 text-slate-400"/>}
-                             <button onClick={(e) => { e.stopPropagation(); setPageAiData(prev => { const d = {...prev[pageNum]}; delete d[type]; return {...prev, [pageNum]: d}; }); }} className="text-slate-300 hover:text-red-500"><Icons.X className="w-3.5 h-3.5"/></button>
-                          </div>
-                        </div>
-                        {card.isExpanded && (
-                          <div className="p-4 border-t border-slate-50">
-                            {card.status === 'loading' ? <div className="animate-pulse space-y-2"><div className="h-3 bg-slate-100 rounded w-3/4"></div><div className="h-3 bg-slate-100 rounded w-full"></div></div> : <div className="markdown-body text-xs text-slate-700" dangerouslySetInnerHTML={renderMarkdown(card.data)} />}
-                          </div>
-                        )}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              ) : (
-                <div className="flex-1 flex flex-col overflow-hidden bg-slate-50/50">
-                  <div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
-                    {chatHistory.map((m, i) => (
-                      <div key={i} className={`flex ${m.role === 'user' ? 'justify-end' : 'justify-start'}`}>
-                        <div className={`flex max-w-[85%] ${m.role === 'user' ? 'flex-row-reverse' : 'flex-row'}`}>
-                          <div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${m.role === 'user' ? 'bg-indigo-100 text-indigo-600 ml-2' : 'bg-slate-800 text-white mr-2'}`}>
-                            {m.role === 'user' ? <Icons.User className="w-4 h-4" /> : <Icons.Bot className="w-4 h-4" />}
-                          </div>
-                          <div className={`p-3 rounded-2xl text-xs ${m.role === 'user' ? 'bg-indigo-600 text-white rounded-tr-none' : 'bg-white border border-slate-200 shadow-sm rounded-tl-none'}`}>
-                            {m.role === 'user' ? m.text : <div className="markdown-body" dangerouslySetInnerHTML={renderMarkdown(m.text)} />}
-                          </div>
-                        </div>
-                      </div>
-                    ))}
-                    {isChatting && <div className="flex space-x-1 p-2"><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-75"></div><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-150"></div></div>}
-                  </div>
-                  <form onSubmit={handleChatSubmit} className="p-4 bg-white border-t border-slate-200">
-                    <div className="relative flex items-center bg-slate-100 rounded-xl overflow-hidden px-3">
-                      <input className="flex-1 bg-transparent py-3 text-xs outline-none" placeholder="关于这篇文献，想问点什么？" value={chatInput} onChange={e => setChatInput(e.target.value)} />
-                      <button type="submit" disabled={isChatting} className="text-indigo-600 disabled:opacity-30"><Icons.Send className="w-4 h-4" /></button>
-                    </div>
-                  </form>
-                </div>
-              )}
-            </div>
-          </main>
-        </div>
-      );
-    }
-    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
-  </script>
+const startScreenshot=()=>{setIsScreenshotMode(true);setScreenshotRect(null);};
+const screenshotMouseDown=(e)=>{if(!isScreenshotMode||!canvasRef.current)return;const r=canvasRef.current.getBoundingClientRect();screenshotStart.current={x:e.clientX-r.left,y:e.clientY-r.top};};
+const screenshotMouseMove=(e)=>{if(!isScreenshotMode||!screenshotStart.current||!canvasRef.current)return;const r=canvasRef.current.getBoundingClientRect();const x=e.clientX-r.left,y=e.clientY-r.top;const sx=screenshotStart.current;setScreenshotRect({left:Math.min(sx.x,x),top:Math.min(sx.y,y),width:Math.abs(x-sx.x),height:Math.abs(y-sx.y)});};
+const screenshotMouseUp=()=>{if(!isScreenshotMode||!screenshotStart.current||!screenshotRect||screenshotRect.width<5)return;const c=canvasRef.current;const sc=document.createElement('canvas');sc.width=screenshotRect.width;sc.height=screenshotRect.height;sc.getContext('2d').drawImage(c,screenshotRect.left,screenshotRect.top,screenshotRect.width,screenshotRect.height,0,0,screenshotRect.width,screenshotRect.height);const data=sc.toDataURL('image/png');noteInsert(`<img src="${data}" style="max-width:100%"/>`);setIsScreenshotMode(false);setScreenshotRect(null);screenshotStart.current=null;};
+
+const extractText=()=>{if(pageText)noteInsert(`<blockquote>${pageText.substring(0,500)}</blockquote><p><br></p>`);};
+const insertImageFile=()=>{const inp=document.createElement('input');inp.type='file';inp.accept='image/*';inp.onchange=(e)=>{const f=e.target.files[0];if(!f)return;const r=new FileReader();r.onload=()=>noteInsert(`<img src="${r.result}" style="max-width:100%"/>`);r.readAsDataURL(f);};inp.click();};
+
+const exportMD=()=>{const html=noteRef.current?.innerHTML||'';const md=turndownService.turndown(html);const mdFixed=md.replace(/<span data-latex="([^"]*)">[^<]*<\/span>/g,(_,latex)=>`$${latex}$`);const key=`export_${paperFp||paperName||'note'}`;const count=(parseInt(localStorage.getItem(key))||0)+1;localStorage.setItem(key,String(count));const blob=new Blob([mdFixed],{type:'text/markdown'});const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download=`阅读笔记${count}.md`;a.click();URL.revokeObjectURL(a.href);};
+
+const handleSaveConfig=()=>{localStorage.setItem('llm_source',modelSource);localStorage.setItem('gemini_api_key',geminiKey);localStorage.setItem('deepseek_api_key',deepseekKey);setShowSettings(false);};
+
+if(!username)return(
+<div className="min-h-screen flex items-center justify-center bg-gradient-to-br from-slate-100 to-indigo-50">
+<div className="bg-white rounded-2xl shadow-xl p-8 w-full max-w-sm">
+<div className="text-center mb-6"><div className="p-3 bg-indigo-100 rounded-xl inline-block text-indigo-600 mb-3"><Icons.FileText className="w-8 h-8"/></div><h1 className="text-xl font-bold text-slate-800">文献精读工作台</h1><p className="text-xs text-slate-400 mt-1">输入用户名以开始</p></div>
+<input className="w-full border border-slate-300 rounded-lg px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-indigo-500 mb-3" placeholder="你的用户名" value={loginInput} onChange={e=>setLoginInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&doLogin()}/>
+<button onClick={doLogin} className="w-full bg-indigo-600 text-white py-3 rounded-lg font-medium hover:bg-indigo-700 transition-colors">进入</button>
+{recentUsers.length>0&&(<div className="mt-4"><p className="text-xs text-slate-400 mb-2">最近使用</p><div className="flex flex-wrap gap-2">{recentUsers.map(u=>(<button key={u} onClick={()=>{setLoginInput(u);setTimeout(()=>{setLoginInput(u);const s=u;setUsername(s);localStorage.setItem('ppr_user',s);dbPut('users',{username:s,lastLogin:Date.now()});loadHistory(s);},50);}} className="px-3 py-1 text-xs bg-slate-100 rounded-full hover:bg-indigo-100 hover:text-indigo-600 transition-colors">{u}</button>))}</div></div>)}
+</div></div>
+);
+
+return(
+<div className="min-h-screen flex flex-col h-screen overflow-hidden">
+<header className="bg-white border-b border-slate-200 px-4 py-3 flex items-center justify-between shrink-0 shadow-sm z-10">
+<div className="flex items-center space-x-3 text-slate-800">
+<div className="p-1.5 bg-indigo-100 rounded-lg text-indigo-600"><Icons.FileText className="w-5 h-5"/></div>
+<div><h1 className="text-lg font-bold leading-tight">文献精读工作台</h1><p className="text-[10px] text-slate-500 font-medium uppercase tracking-widest">{modelSource} 引擎 · {username}</p></div>
+</div>
+<div className="flex items-center space-x-3">
+<button onClick={()=>setShowSidebar(!showSidebar)} className={`flex items-center text-sm font-medium px-2 py-2 transition-colors ${showSidebar?'text-indigo-600':'text-slate-500 hover:text-indigo-600'}`} title="侧边栏">☰</button>
+<label className="flex items-center text-sm font-medium text-white bg-slate-800 hover:bg-slate-700 px-4 py-2 rounded-lg cursor-pointer transition-colors shadow-sm"><Icons.Upload className="w-4 h-4 mr-2"/>上传 PDF<input type="file" hidden accept=".pdf" onChange={handleFileUpload}/></label>
+<button onClick={()=>setShowSettings(true)} className="flex items-center text-sm font-medium text-slate-500 hover:text-indigo-600 px-2 py-2 transition-colors"><Icons.Settings className="w-5 h-5"/></button>
+<button onClick={doLogout} className="flex items-center text-sm font-medium text-slate-400 hover:text-red-500 px-2 py-2 transition-colors" title="切换用户"><Icons.LogOut className="w-4 h-4"/></button>
+</div>
+</header>
+
+{showSettings&&(
+<div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+<div className="bg-white rounded-2xl shadow-2xl p-6 w-full max-w-sm">
+<h3 className="text-xl font-bold mb-4">配置 AI 引擎</h3>
+<div className="space-y-4">
+<div><label className="block text-xs font-bold text-slate-400 uppercase mb-1">选择当前引擎</label>
+<select value={modelSource} onChange={e=>setModelSource(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500"><option value="gemini">Gemini 2.5 (需要网络助理)</option><option value="deepseek">DeepSeek (国内极速直连)</option></select></div>
+<div className="mt-4"><label className="block text-xs font-bold text-slate-400 uppercase mb-1">{modelSource==='gemini'?'Gemini API Key':'DeepSeek API Key'}</label>
+<input type="password" value={modelSource==='gemini'?geminiKey:deepseekKey} onChange={e=>modelSource==='gemini'?setGeminiKey(e.target.value):setDeepseekKey(e.target.value)} className="w-full border border-slate-300 rounded-lg px-3 py-2 outline-none focus:ring-2 focus:ring-indigo-500" placeholder={modelSource==='gemini'?"AIzaSy...":"sk-..."}/></div>
+</div>
+<div className="flex justify-end space-x-2 mt-6"><button onClick={()=>setShowSettings(false)} className="px-4 py-2 text-sm bg-slate-100 rounded-lg">取消</button><button onClick={handleSaveConfig} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg">保存配置</button></div>
+</div></div>
+)}
+
+{showSidebar&&(
+<div className="fixed left-0 top-0 h-full w-64 bg-white shadow-xl z-40 flex flex-col border-r border-slate-200" style={{paddingTop:60}}>
+<div className="p-4 border-b border-slate-100">
+<h3 className="text-sm font-bold text-slate-700 mb-2">面板显示</h3>
+<div className="space-y-1.5">
+{[['PDF',showPDF,setShowPDF],['AI',showAI,setShowAI],['笔记',showNotes,setShowNotes]].map(([label,val,set])=>(
+<label key={label} className="flex items-center justify-between cursor-pointer px-2 py-1 rounded hover:bg-slate-50"><span className="text-xs text-slate-600">{label}</span><input type="checkbox" className="w-4 h-4 accent-indigo-600" checked={val} onChange={e=>set(e.target.checked)}/></label>
+))}
+</div></div>
+<div className="flex-1 overflow-y-auto p-4">
+<h3 className="text-sm font-bold text-slate-700 mb-3">阅读历史 ({paperHistory.length})</h3>
+{paperHistory.length===0?(<p className="text-xs text-slate-400">暂无阅读记录</p>):(
+<div className="space-y-2">{paperHistory.map(p=>(
+<div key={p.id} className="p-2 rounded-lg border border-slate-100 hover:border-indigo-200 hover:bg-indigo-50/50 cursor-pointer transition-colors" onClick={()=>{setPaperName(p.paperName||'');alert('请上传对应的 PDF 文件，系统将自动恢复阅读记录。');}}>
+<div className="text-xs font-medium text-slate-700 truncate">{p.paperName||p.fileName||'未命名文献'}</div>
+<div className="text-[10px] text-slate-400 mt-0.5">{p.pageCount||'?'}页 · {new Date(p.visitedAt).toLocaleDateString('zh-CN')}</div>
+</div>))}</div>
+)}
+</div></div>
+)}
+
+<main className="flex-1 flex overflow-hidden bg-slate-100" ref={mainRef} onMouseMove={onDragMove} onMouseUp={onDragUp} onMouseLeave={onDragUp} style={{cursor:dragTarget?'col-resize':'auto',userSelect:dragTarget?'none':'auto'}}>
+{showPDF&&(<div style={{width:`${split1}%`}} className="h-full flex flex-col relative overflow-hidden">
+<div className="h-10 bg-white border-b border-slate-200 flex items-center justify-between px-4 shrink-0 shadow-sm z-10">
+<button onClick={()=>setPageNum(p=>Math.max(1,p-1))} className="p-1 rounded text-slate-600 hover:bg-slate-100"><Icons.ChevronLeft className="w-5 h-5"/></button>
+<div className="text-xs font-bold text-slate-500">{pdfDoc?`第 ${pageNum} / ${numPages} 页`:'待上传'}</div>
+<button onClick={()=>setPageNum(p=>Math.min(numPages,p+1))} className="p-1 rounded text-slate-600 hover:bg-slate-100"><Icons.ChevronRight className="w-5 h-5"/></button>
+</div>
+<div className="flex-1 overflow-auto flex justify-center p-4 relative" onMouseDown={screenshotMouseDown} onMouseMove={screenshotMouseMove} onMouseUp={screenshotMouseUp} style={{cursor:isScreenshotMode?'crosshair':'auto'}}>
+{!pdfDoc?(<div className="flex flex-col items-center justify-center text-slate-300 h-full"><Icons.FileText className="w-16 h-16 mb-4 opacity-20"/><p>点击上方按钮上传 PDF</p></div>):(
+<div className="relative inline-block">
+{isRendering&&<div className="absolute inset-0 bg-white/60 flex items-center justify-center z-10"><Icons.Loader className="w-8 h-8 text-indigo-500 animate-spin"/></div>}
+<canvas ref={canvasRef} className="max-w-full h-auto bg-white shadow-lg"></canvas>
+{isScreenshotMode&&<div className="absolute inset-0 bg-indigo-500/10 border-2 border-dashed border-indigo-400 rounded pointer-events-none"/>}
+{screenshotRect&&<div className="absolute border-2 border-indigo-500 bg-indigo-200/20" style={{left:screenshotRect.left,top:screenshotRect.top,width:screenshotRect.width,height:screenshotRect.height}}/>}
+</div>)}
+</div>
+</div>)}
+{showPDF&&showAI&&<div className={`divider-resize ${dragTarget===1?'active':''}`} onMouseDown={onDiv1Down}></div>}
+{showAI&&(<div style={{width:showPDF&&showNotes?`${100-split1-split2}%`:showPDF?`${100-split1}%`:'100%'}} className="h-full flex flex-col bg-white overflow-hidden">
+<div className="flex bg-slate-100 p-1 m-4 mb-2 rounded-lg shrink-0 w-fit">
+{['cards','chat'].map(m=>(<button key={m} onClick={()=>setAiMode(m)} className={`px-4 py-1.5 text-xs font-bold rounded-md transition-all ${aiMode===m?'bg-white text-indigo-600 shadow-sm':'text-slate-500'}`}>{m==='cards'?'快捷操作':'自由对话'}</button>))}
+</div>
+{aiMode==='cards'?(
+<div className="flex-1 flex flex-col overflow-hidden">
+<div className="px-4 pb-4 grid grid-cols-2 gap-2 shrink-0">
+{Object.keys(ACTION_META).map(key=>{const meta=ACTION_META[key];const isCached=pageAiData[pageNum]?.[key]?.status==='success';return(
+<button key={key} onClick={()=>triggerAI(key)} disabled={!pdfDoc} className={`flex flex-col items-center justify-center p-2 rounded-xl border transition-all relative ${isCached?'border-green-200 bg-green-50':'border-slate-200 bg-white hover:border-indigo-300 hover:shadow-md'}`}>
+<meta.icon className={`w-5 h-5 mb-1 ${isCached?'text-green-600':'text-slate-400'}`}/>
+<span className={`text-[10px] font-bold ${isCached?'text-green-700':'text-slate-600'}`}>{meta.title}</span>
+{isCached&&<div className="absolute top-1 right-1 w-1.5 h-1.5 rounded-full bg-green-500"></div>}
+</button>);})}
+</div>
+<div className="flex-1 overflow-auto p-4 bg-slate-50 space-y-4">
+{Object.entries(pageAiData[pageNum]||{}).map(([type,card])=>(
+<div key={type} className={`rounded-xl shadow-sm border overflow-hidden ${card.status==='error'?'border-red-200':'border-slate-200 bg-white'}`}>
+<div className="flex items-center justify-between px-4 py-3 cursor-pointer select-none bg-slate-50/50" onClick={()=>setPageAiData(p=>({...p,[pageNum]:{...p[pageNum],[type]:{...card,isExpanded:!card.isExpanded}}}))}>
+<div className="flex items-center font-bold text-xs">{card.status==='loading'?<Icons.Loader className="w-3.5 h-3.5 mr-2 animate-spin text-indigo-500"/>:<Icons.MessageCircle className="w-3.5 h-3.5 mr-2 text-blue-500"/>}{ACTION_META[type].title}</div>
+<div className="flex items-center space-x-2">{card.isExpanded?<Icons.ChevronUp className="w-4 h-4 text-slate-400"/>:<Icons.ChevronDown className="w-4 h-4 text-slate-400"/>}<button onClick={e=>{e.stopPropagation();setPageAiData(p=>{const d={...p[pageNum]};delete d[type];return{...p,[pageNum]:d};});}} className="text-slate-300 hover:text-red-500"><Icons.X className="w-3.5 h-3.5"/></button></div>
+</div>
+{card.isExpanded&&(<div className="p-4 border-t border-slate-50">{card.status==='loading'?<div className="animate-pulse space-y-2"><div className="h-3 bg-slate-100 rounded w-3/4"></div><div className="h-3 bg-slate-100 rounded w-full"></div></div>:<div className="markdown-body text-xs text-slate-700" dangerouslySetInnerHTML={renderMarkdown(card.data)}/>}</div>)}
+</div>))}
+</div>
+</div>
+):(
+<div className="flex-1 flex flex-col overflow-hidden bg-slate-50/50">
+<div ref={chatScrollRef} className="flex-1 overflow-y-auto p-4 space-y-4">
+{chatHistory.map((m,i)=>(<div key={i} className={`flex ${m.role==='user'?'justify-end':'justify-start'}`}><div className={`flex max-w-[85%] ${m.role==='user'?'flex-row-reverse':'flex-row'}`}><div className={`w-7 h-7 rounded-full flex items-center justify-center shrink-0 ${m.role==='user'?'bg-indigo-100 text-indigo-600 ml-2':'bg-slate-800 text-white mr-2'}`}>{m.role==='user'?<Icons.User className="w-4 h-4"/>:<Icons.Bot className="w-4 h-4"/>}</div><div className={`p-3 rounded-2xl text-xs ${m.role==='user'?'bg-indigo-600 text-white rounded-tr-none':'bg-white border border-slate-200 shadow-sm rounded-tl-none'}`}>{m.role==='user'?m.text:<div className="markdown-body" dangerouslySetInnerHTML={renderMarkdown(m.text)}/>}</div></div></div>))}
+{isChatting&&<div className="flex space-x-1 p-2"><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce"></div><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-75"></div><div className="w-1.5 h-1.5 bg-slate-400 rounded-full animate-bounce delay-150"></div></div>}
+</div>
+<form onSubmit={handleChatSubmit} className="p-4 bg-white border-t border-slate-200"><div className="relative flex items-center bg-slate-100 rounded-xl overflow-hidden px-3"><input className="flex-1 bg-transparent py-3 text-xs outline-none" placeholder="关于这篇文献，想问点什么？" value={chatInput} onChange={e=>setChatInput(e.target.value)}/><button type="submit" disabled={isChatting} className="text-indigo-600 disabled:opacity-30"><Icons.Send className="w-4 h-4"/></button></div></form>
+</div>
+)}
+</div>)}
+{showAI&&showNotes&&<div className={`divider-resize ${dragTarget===2?'active':''}`} onMouseDown={onDiv2Down}></div>}
+{showNotes&&(<div style={{width:showPDF&&showAI?`${split2}%`:showAI?`${split2}%`:'100%'}} className="h-full flex flex-col bg-white overflow-hidden">
+<div className="px-4 py-2 flex items-center gap-2 shrink-0 border-b border-slate-100 bg-slate-50">
+<span className="text-xs font-bold text-slate-500 whitespace-nowrap">笔记</span>
+<span className="text-xs text-slate-400 whitespace-nowrap">简称:</span>
+<input className="flex-1 text-xs border border-slate-200 rounded px-2 py-1 outline-none focus:border-indigo-400" placeholder="如 Song2020" value={paperName} onChange={e=>setPaperName(e.target.value)}/>
+<button onClick={exportMD} className="flex items-center text-xs font-medium bg-indigo-600 text-white px-3 py-1.5 rounded-lg hover:bg-indigo-700 transition-colors whitespace-nowrap"><Icons.Download className="w-3.5 h-3.5 mr-1"/>导出MD</button>
+</div>
+<div className="px-4 py-1.5 flex items-center gap-1 flex-wrap shrink-0 border-b border-slate-100">
+<button onClick={()=>noteExec('bold')} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="加粗 Ctrl+B"><Icons.Bold className="w-3.5 h-3.5"/></button>
+<button onClick={()=>noteExec('italic')} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="斜体 Ctrl+I"><Icons.Italic className="w-3.5 h-3.5"/></button>
+<button onClick={()=>noteExec('underline')} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="下划线 Ctrl+U"><Icons.Underline className="w-3.5 h-3.5"/></button>
+<span className="w-px h-4 bg-slate-200 mx-0.5"/>
+<button onClick={()=>noteExec('formatBlock','<h1>')} className="px-2 py-1 text-[11px] font-bold rounded hover:bg-slate-100 text-slate-600">H1</button>
+<button onClick={()=>noteExec('formatBlock','<h2>')} className="px-2 py-1 text-[11px] font-bold rounded hover:bg-slate-100 text-slate-600">H2</button>
+<span className="w-px h-4 bg-slate-200 mx-0.5"/>
+<button onClick={()=>noteExec('formatBlock','<blockquote>')} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="引用">"</button>
+<button onClick={()=>noteExec('formatBlock','<pre>')} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="代码">&lt;/&gt;</button>
+<span className="w-px h-4 bg-slate-200 mx-0.5"/>
+<button onClick={()=>setShowTableGrid(true)} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="插入表格"><Icons.Table className="w-3.5 h-3.5"/></button>
+<button onClick={insertImageFile} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="插入图片"><Icons.Image className="w-3.5 h-3.5"/></button>
+<button onClick={()=>setShowFormula(true)} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="插入公式">&Sigma;</button>
+<button onClick={initDrawing} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="涂鸦"><Icons.Pen className="w-3.5 h-3.5"/></button>
+<button onClick={startScreenshot} className={`p-1.5 rounded text-slate-600 ${isScreenshotMode?'bg-indigo-100 text-indigo-600':'hover:bg-slate-100'}`} title="截取PDF区域"><Icons.Scissors className="w-3.5 h-3.5"/></button>
+<button onClick={extractText} className="p-1.5 rounded hover:bg-slate-100 text-slate-600" title="摘录当前页文本">&para;</button>
+</div>
+<div ref={noteRef} className="note-editor flex-1 overflow-auto p-4 text-sm text-slate-700" contentEditable suppressContentEditableWarning onInput={()=>setNoteContent(noteRef.current?.innerHTML||'')} onPaste={e=>{e.preventDefault();const items=e.clipboardData?.items;if(items){for(const item of items){if(item.type.startsWith('image/')){const f=item.getAsFile();const r=new FileReader();r.onload=()=>insertHTML(`<img src="${r.result}" style="max-width:100%"/>`);r.readAsDataURL(f);return;}}}const text=e.clipboardData.getData('text');if(text){insertHTML(text);}setNoteContent(noteRef.current?.innerHTML||'');}}>{noteContent?null:<span className="text-slate-300">在这里写笔记... 支持粘贴图片、公式、表格</span>}</div>
+</div>)}
+</main>
+
+{showFormula&&(<div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4" onClick={()=>setShowFormula(false)}><div className="bg-white rounded-xl shadow-2xl p-5 w-full max-w-md" onClick={e=>e.stopPropagation()}><div className="flex items-center justify-between mb-3"><h3 className="font-bold text-sm">插入 LaTeX 公式</h3><button onClick={()=>setShowFormula(false)}><Icons.X className="w-4 h-4 text-slate-400"/></button></div><div className="flex gap-2 mb-3 flex-wrap">{SYMBOLS.flat().map(s=><button key={s} className="symbol-btn" onClick={()=>setFormulaInput(p=>p+s)}>{s}</button>)}</div><input className="w-full border border-slate-300 rounded-lg px-3 py-2 text-sm outline-none focus:ring-2 focus:ring-indigo-500 mb-2" placeholder="如: E = mc^2" value={formulaInput} onChange={e=>setFormulaInput(e.target.value)} onKeyDown={e=>e.key==='Enter'&&insertFormula()}/>{formulaPreview&&<div className="p-3 bg-slate-50 rounded-lg text-center text-lg" dangerouslySetInnerHTML={{__html:formulaPreview}}></div>}<button onClick={insertFormula} className="w-full mt-3 bg-indigo-600 text-white py-2 rounded-lg text-sm font-medium hover:bg-indigo-700">插入公式</button></div></div>)}
+
+{showTableGrid&&(<div className="fixed inset-0 bg-slate-900/40 z-50 flex items-center justify-center p-4" onClick={()=>setShowTableGrid(false)}><div className="bg-white rounded-xl shadow-2xl p-4" onClick={e=>e.stopPropagation()}><p className="text-xs text-slate-500 mb-2 text-center">{tableHover.r}x{tableHover.c} 表格</p>{Array.from({length:8},(_,r)=>(<div key={r} className="flex">{Array.from({length:8},(_,c)=>(<div key={c} className={`table-grid-cell ${r<tableHover.r&&c<tableHover.c?'active':''}`} onMouseEnter={()=>setTableHover({r:r+1,c:c+1})} onClick={()=>insertTable(r+1,c+1)}/>))}</div>))}</div></div>)}
+
+{showDrawing&&(<div className="fixed inset-0 bg-slate-900/60 z-50 flex items-center justify-center p-4"><div className="bg-white rounded-xl shadow-2xl p-4 w-full max-w-2xl"><div className="flex items-center justify-between mb-3"><h3 className="font-bold text-sm">涂鸦</h3><button onClick={()=>setShowDrawing(false)}><Icons.X className="w-4 h-4 text-slate-400"/></button></div><div className="flex items-center gap-3 mb-3"><input type="color" value={drawColor} onChange={e=>{setDrawColor(e.target.value);setDrawEraser(false);}} className="w-8 h-8 rounded cursor-pointer"/><input type="range" min="1" max="20" value={drawSize} onChange={e=>setDrawSize(parseInt(e.target.value))} className="w-24"/><button onClick={()=>setDrawEraser(!drawEraser)} className={`px-3 py-1 text-xs rounded ${drawEraser?'bg-rose-100 text-rose-600':'bg-slate-100 text-slate-600'}`}>橡皮擦</button><button onClick={clearDrawing} className="px-3 py-1 text-xs rounded bg-slate-100 text-slate-600">清除</button></div><canvas ref={drawCanvasRef} className="w-full border border-slate-200 rounded-lg" style={{height:400}} onMouseDown={drawStart} onMouseMove={drawMove} onMouseUp={drawEnd} onMouseLeave={drawEnd}></canvas><div className="flex justify-end gap-2 mt-3"><button onClick={()=>setShowDrawing(false)} className="px-4 py-2 text-sm bg-slate-100 rounded-lg">取消</button><button onClick={insertDrawing} className="px-4 py-2 text-sm bg-indigo-600 text-white rounded-lg">插入笔记</button></div></div></div>)}
+</div>
+);
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
 </body>
 </html>
